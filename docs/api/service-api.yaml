@@ -1,0 +1,419 @@
+openapi: 3.0.0
+info:
+  title: Citas API - Services
+  description: API endpoints for service management including CRUD operations, categories, and filtering
+  version: 1.0.0
+  contact:
+    name: Citas Development Team
+    email: dev@citas.com
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.citas.com
+    description: Production server
+
+tags:
+  - name: Services
+    description: Service management endpoints
+  - name: Categories
+    description: Service category endpoints
+
+paths:
+  /v1/services:
+    get:
+      tags:
+        - Services
+      summary: List Services
+      description: Get a list of services with optional filtering
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+            description: Filter by category ID
+        - name: is_active
+          in: query
+          schema:
+            type: string
+            enum: ['true', 'false']
+            default: 'true'
+            description: Filter by active status
+
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+
+    post:
+      tags:
+        - Services
+      summary: Create Service
+      description: Create a new service
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - duration
+                - price
+              properties:
+                name:
+                  type: string
+                  example: "Corte de Cabello"
+                description:
+                  type: string
+                  example: "Corte de cabello para hombre"
+                duration:
+                  type: integer
+                  description: Duration in minutes
+                  example: 30
+                price:
+                  type: number
+                  example: 25.00
+                category_id:
+                  type: string
+                  format: uuid
+                is_active:
+                  type: boolean
+                  default: true
+
+      responses:
+        '201':
+          description: Service created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Service'
+
+  /v1/services/{id}:
+    get:
+      tags:
+        - Services
+      summary: Get Service
+      description: Get a specific service by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '200':
+          description: Service found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Service'
+        '404':
+          description: Service not found
+
+    put:
+      tags:
+        - Services
+      summary: Update Service
+      description: Update a service completely
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceInput'
+
+      responses:
+        '200':
+          description: Service updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Service'
+        '404':
+          description: Service not found
+
+    patch:
+      tags:
+        - Services
+      summary: Partial Update Service
+      description: Update a service partially
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                duration:
+                  type: integer
+                price:
+                  type: number
+                category_id:
+                  type: string
+                  format: uuid
+                is_active:
+                  type: boolean
+
+      responses:
+        '200':
+          description: Service updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Service'
+        '404':
+          description: Service not found
+
+    delete:
+      tags:
+        - Services
+      summary: Delete Service (Soft Delete)
+      description: Soft delete a service by setting is_active to false
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '204':
+          description: Service deleted
+        '404':
+          description: Service not found
+
+  /v1/categories:
+    get:
+      tags:
+        - Categories
+      summary: List Categories
+      description: Get a list of service categories
+      security:
+        - bearerAuth: []
+
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+    post:
+      tags:
+        - Categories
+      summary: Create Category
+      description: Create a new service category
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "Cabello"
+                description:
+                  type: string
+                  example: "Servicios de cabello"
+
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Category'
+
+components:
+  schemas:
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        tenant_id:
+          type: string
+          format: uuid
+          example: "tenant-123"
+        name:
+          type: string
+          example: "Corte de Cabello"
+        description:
+          type: string
+          example: "Corte de cabello para hombre"
+        duration:
+          type: integer
+          description: Duration in minutes
+          example: 30
+        price:
+          type: number
+          example: 25.00
+        category_id:
+          type: string
+          format: uuid
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        category:
+          $ref: '#/components/schemas/Category'
+
+    ServiceInput:
+      type: object
+      required:
+        - name
+        - duration
+        - price
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        duration:
+          type: integer
+        price:
+          type: number
+        category_id:
+          type: string
+          format: uuid
+        is_active:
+          type: boolean
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        tenant_id:
+          type: string
+          format: uuid
+          example: "tenant-123"
+        name:
+          type: string
+          example: "Cabello"
+        description:
+          type: string
+          example: "Servicios de cabello"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "SERVICE_NOT_FOUND"
+            message:
+              type: string
+              example: "Service not found"
+
+    ErrorCodes:
+      type: string
+      enum:
+        - SERVICE_NOT_FOUND
+        - CATEGORY_NOT_FOUND
+        - INVALID_DURATION
+        - INVALID_PRICE

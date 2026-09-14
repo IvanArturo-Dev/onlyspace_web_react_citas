@@ -1,0 +1,181 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Esquema de datos": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287908726
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287925948
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788288181586
+      }
+    ],
+    "2.1 Pruebas de aforo (Property 1, 2)": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287908886
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788288199786
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788288582615
+      }
+    ],
+    "3.1 Pruebas de pago (Property 5, 6)": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287909381
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788288865352
+      }
+    ],
+    "4. Notas internas (bitacora)": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287909498
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788288878511
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289051026
+      }
+    ],
+    "5.1 Pruebas de WhatsApp (Property 3, 4, 6)": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287909597
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289057229
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289394323
+      }
+    ],
+    "6.1 Pruebas de actualizacion (Property 7, 6)": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287909702
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289403869
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289740019
+      }
+    ],
+    "7. Frontend: aforo, reprogramacion y WhatsApp": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287909823
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289768750
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788290182113
+      }
+    ],
+    "8. Frontend: pago y notas": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287909946
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788290187014
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788290382931
+      }
+    ],
+    "9. Verificacion end-to-end": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788287910041
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788290388045
+      },
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788291046923
+      }
+    ],
+    "2. Aforo: disponibilidad y reserva por capacidad": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788288582746
+      }
+    ],
+    "3. Pago manual (total/parcial)": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788288865661
+      }
+    ],
+    "5. WhatsApp: perfil del negocio, telefono del cliente y enlace de recordatorio": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289395683
+      }
+    ],
+    "6. Actualizacion de cita consistente con aforo": [
+      {
+        "executionId": "7c6801c0-fbd0-4e17-a50e-ac3b3afa7077",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788289740169
+      }
+    ]
+  }
+}

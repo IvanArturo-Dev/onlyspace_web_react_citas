@@ -1,0 +1,563 @@
+openapi: 3.0.0
+info:
+  title: Citas API - Authentication
+  description: API endpoints for user authentication including JWT, OAuth (Google/Apple), session management, and user profile operations.
+  version: 1.0.0
+  contact:
+    name: Citas Development Team
+    email: dev@citas.com
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.citas.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: OAuth
+    description: OAuth 2.0 authentication endpoints (Google, Apple)
+
+paths:
+  # Native Authentication
+  /v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User Login
+      description: Authenticates a user with email and password, returns JWT tokens and user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: usuario@ejemplo.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "******"
+                device_id:
+                  type: string
+                  description: Unique device identifier for session management
+                  example: "device-12345"
+                device_name:
+                  type: string
+                  description: Human-readable device name
+                  example: "iPhone 14 Pro"
+                platform:
+                  type: string
+                  enum: [ios, android, web]
+                  example: "ios"
+
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: "550e8400-e29b-41d4-a716-446655440000"
+                      name:
+                        type: string
+                        example: "Juan Pérez"
+                      email:
+                        type: string
+                        example: "usuario@ejemplo.com"
+                      role:
+                        type: string
+                        example: "ADMIN"
+                      permissions:
+                        type: array
+                        items:
+                          type: string
+                        example: ["appointment.create", "appointment.read"]
+                  access_token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refresh_token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '401':
+          description: Invalid credentials or account disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: User Registration
+      description: Registers a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - name
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: usuario@ejemplo.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "******"
+                name:
+                  type: string
+                  example: "Juan Pérez"
+                tenant_id:
+                  type: string
+                  format: uuid
+                  description: Optional tenant ID for multi-tenant setup
+                  example: "tenant-123"
+                role_id:
+                  type: string
+                  format: uuid
+                  description: Optional role ID
+                  example: "role-123"
+
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                      permissions:
+                        type: array
+                        items:
+                          type: string
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Validation error
+
+  /v1/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh Access Token
+      description: Exchanges a refresh token for a new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  format: bearer
+                device_id:
+                  type: string
+                  description: Device identifier must match original
+
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  user:
+                    type: object
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User Logout
+      description: Invalidates all refresh tokens for the user, effectively logging them out
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: x-device-id
+          in: header
+          required: true
+          schema:
+            type: string
+            description: Device identifier
+
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+
+  /v1/auth/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: Request Password Reset
+      description: Sends a password reset email to the user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+
+      responses:
+        '200':
+          description: Reset link sent (if email exists)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Reset link sent if email exists"
+
+  /v1/auth/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: Reset Password
+      description: Resets user password with reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - new_password
+              properties:
+                token:
+                  type: string
+                  description: Password reset token
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+
+      responses:
+        '200':
+          description: Password reset successful
+        '400':
+          description: Invalid token or validation error
+
+  /v1/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get Current User Profile
+      description: Returns the authenticated user's profile information
+      security:
+        - bearerAuth: []
+
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      phone:
+                        type: string
+                      avatar:
+                        type: string
+                      role:
+                        type: string
+                      permissions:
+                        type: array
+                        items:
+                          type: string
+
+  # Google OAuth
+  /v1/auth/google/url:
+    get:
+      tags:
+        - OAuth
+      summary: Get Google OAuth URL
+      description: Returns the Google OAuth authorization URL for redirect
+      responses:
+        '200':
+          description: Google OAuth URL returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url:
+                    type: string
+                    example: "https://accounts.google.com/o/oauth2/v2/auth..."
+                  state:
+                    type: string
+                    description: State parameter for CSRF protection
+
+  /v1/auth/google/login:
+    post:
+      tags:
+        - OAuth
+      summary: Google OAuth Login
+      description: Complete Google OAuth flow by exchanging authorization code for tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Authorization code from Google
+                device_id:
+                  type: string
+                device_name:
+                  type: string
+                platform:
+                  type: string
+                  enum: [ios, android, web]
+
+      responses:
+        '200':
+          description: Google login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      avatar:
+                        type: string
+                      role:
+                        type: string
+                      permissions:
+                        type: array
+                        items:
+                          type: string
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  google_access_token:
+                    type: string
+        '401':
+          description: Google authentication failed
+        '400':
+          description: Invalid request
+
+  # Apple OAuth
+  /v1/auth/apple/url:
+    get:
+      tags:
+        - OAuth
+      summary: Get Apple OAuth URL
+      description: Returns the Apple OAuth authorization URL for redirect
+      responses:
+        '200':
+          description: Apple OAuth URL returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url:
+                    type: string
+                  state:
+                    type: string
+
+  /v1/auth/apple/login:
+    post:
+      tags:
+        - OAuth
+      summary: Apple OAuth Login
+      description: Complete Apple Sign-In flow using code or ID token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Authorization code from Apple
+                id_token:
+                  type: string
+                  description: ID token from Apple (alternative to code)
+                device_id:
+                  type: string
+                device_name:
+                  type: string
+                platform:
+                  type: string
+                  enum: [ios, android, web]
+
+      responses:
+        '200':
+          description: Apple login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      role:
+                        type: string
+                      permissions:
+                        type: array
+                        items:
+                          type: string
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '401':
+          description: Apple authentication failed
+        '400':
+          description: Invalid request
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "INVALID_CREDENTIALS"
+            message:
+              type: string
+              example: "Invalid email or password"
+
+    AuthErrorCodes:
+      type: string
+      enum:
+        - INVALID_CREDENTIALS
+        - ACCOUNT_DISABLED
+        - EMAIL_EXISTS
+        - TOKEN_INVALIDATED
+        - INVALID_REFRESH_TOKEN
+        - USER_NOT_FOUND
+        - AUTH_REQUIRED
+        - VALIDATION_ERROR
+        - INTERNAL_ERROR
+        - GOOGLE_OAUTH_NOT_CONFIGURED
+        - APPLE_OAUTH_NOT_CONFIGURED
+        - INVALID_AUDIENCE
+        - NO_MATCHING_KEY
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

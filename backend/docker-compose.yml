@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: citas-postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: citas
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - citas-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: citas-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - citas-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: citas-pgadmin
+    ports:
+      - '8080:80'
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@localhost.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres
+    networks:
+      - citas-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  citas-network:
+    driver: bridge

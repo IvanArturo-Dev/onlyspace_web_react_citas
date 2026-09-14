@@ -1,0 +1,362 @@
+openapi: 3.0.0
+info:
+  title: Citas API - Dashboard
+  description: API endpoints for dashboard statistics, analytics, and reporting
+  version: 1.0.0
+  contact:
+    name: Citas Development Team
+    email: dev@citas.com
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.citas.com
+    description: Production server
+
+tags:
+  - name: Dashboard
+    description: Dashboard and analytics endpoints
+
+paths:
+  /v1/dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Dashboard Statistics
+      description: Get summary statistics for the dashboard
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+            description: Start date for filtering (optional)
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+            description: End date for filtering (optional)
+
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_customers:
+                        type: integer
+                        example: 150
+                      total_services:
+                        type: integer
+                        example: 15
+                      total_appointments:
+                        type: integer
+                        example: 450
+                      completed_appointments:
+                        type: integer
+                        example: 400
+                      cancelled_appointments:
+                        type: integer
+                        example: 50
+                      total_professionals:
+                        type: integer
+                        example: 8
+                      total_income:
+                        type: number
+                        example: 12500.50
+                      pending_appointments:
+                        type: integer
+                        example: 25
+
+  /v1/dashboard/appointments-trend:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Appointments Trend
+      description: Get daily trend of appointments over a date range
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+
+      responses:
+        '200':
+          description: Appointments trend
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        total:
+                          type: integer
+                        completed:
+                          type: integer
+                        cancelled:
+                          type: integer
+                        pending:
+                          type: integer
+                        in_progress:
+                          type: integer
+                        confirmed:
+                          type: integer
+
+  /v1/dashboard/services-popularity:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Services Popularity
+      description: Get most popular services by appointment count
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+
+      responses:
+        '200':
+          description: Services popularity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicePopularity'
+
+  /v1/dashboard/income:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Income Statistics
+      description: Get income statistics with daily breakdown
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+
+      responses:
+        '200':
+          description: Income statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: number
+                      appointments_count:
+                        type: integer
+                      average:
+                        type: number
+                      daily_breakdown:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                            appointments:
+                              type: integer
+                            total:
+                              type: number
+                            average:
+                              type: number
+
+  /v1/dashboard/occupancy:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Occupancy Rate
+      description: Get daily occupancy rate for the business
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+
+      responses:
+        '200':
+          description: Occupancy data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        total_minutes:
+                          type: integer
+                        occupied_minutes:
+                          type: integer
+                        utilization:
+                          type: number
+                        appointments:
+                          type: array
+                          items:
+                            type: object
+
+  /v1/dashboard/report:
+    get:
+      tags:
+        - Dashboard
+      summary: Get Report
+      description: Get a specific type of report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [appointments, services, income, occupancy, summary]
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+
+      responses:
+        '200':
+          description: Report data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+        '400':
+          description: Invalid report type
+
+components:
+  schemas:
+    ServicePopularity:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        duration:
+          type: integer
+        price:
+          type: number
+        total_appointments:
+          type: integer
+        completed_appointments:
+          type: integer
+        cancelled_appointments:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "INVALID_REPORT_TYPE"
+            message:
+              type: string
+              example: "Invalid report type"
+
+    ReportTypes:
+      type: string
+      enum: [appointments, services, income, occupancy, summary]
+
+    ErrorCodes:
+      type: string
+      enum:
+        - INVALID_REPORT_TYPE
+        - VALIDATION_ERROR

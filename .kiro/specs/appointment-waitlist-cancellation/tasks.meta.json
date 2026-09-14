@@ -1,0 +1,187 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Schema: modelos nuevos + campos de notificacion": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804327728
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804340392
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804487675
+      }
+    ],
+    "2. Backend: cancellationPolicy.service (config politica)": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804327872
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804616536
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804834654
+      }
+    ],
+    "3. Backend: customerCancellation.service (contador + deuda)": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329212
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804617451
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804835550
+      }
+    ],
+    "4. Backend: whatsapp.buildSpotOpenedLink (mensaje \"espacio abierto\")": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329289
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804618808
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804836792
+      }
+    ],
+    "5. Backend: waitlist.service (FIFO + transiciones)": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329385
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804843196
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788805016778
+      }
+    ],
+    "6. Backend: notification.service (in-app best-effort)": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329521
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804844274
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788805017572
+      }
+    ],
+    "7. Backend: integrar en appointment.service (cancelar/crear/at-risk + bloqueo deuda)": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329605
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788805026551
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788805543655
+      }
+    ],
+    "8. Backend: controladores + rutas + guards": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329661
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788805549364
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788805967038
+      }
+    ],
+    "9. Frontend: servicios + tipos": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329710
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788805973950
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788806084343
+      }
+    ],
+    "10. Frontend: emprendedor (politica, cancelar, waitlist, deuda, at-risk)": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329759
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788806090375
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788810435857
+      }
+    ],
+    "11. Frontend: campana de notificaciones + encolar cliente": [
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788804329807
+      },
+      {
+        "executionId": "7be2bbbc-d6ff-4061-a69b-b7c18b7f1442",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788806091435
+      }
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Extraer runGoogleHook a un modulo compartido": [
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788421529398
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788421534177
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788421720981
+      }
+    ],
+    "2. Exponer online_sessions_enabled en GET /public/:code/info": [
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788421529439
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788421882059
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788422075869
+      }
+    ],
+    "3. Aceptar y persistir modality + hook en la reserva publica": [
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788421529712
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788422080197
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788422344023
+      }
+    ],
+    "4. Verificacion e2e local (build + tests + humo)": [
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788421529755
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788422350174
+      },
+      {
+        "executionId": "4a396a86-2cdc-4e71-8cad-dc13a55f27d3",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788422444884
+      }
+    ]
+  }
+}

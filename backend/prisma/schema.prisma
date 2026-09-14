@@ -1,0 +1,815 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  PROFESSIONAL
+  RECEPTION
+  CLIENT
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  DELETE
+  CONFIRM
+  CANCEL
+}
+
+enum PaymentStatus {
+  unpaid
+  partial
+  paid
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+}
+
+// Models
+model Tenant {
+  id                      String    @id @default(cuid())
+  name                    String
+  subdomain               String    @unique
+  domain                  String?
+  status                  String    @default("active")
+  booking_code            String?   @unique
+  booking_enabled         Boolean   @default(true)
+  whatsapp_number         String?
+  whatsapp_template       String?   @db.Text
+  subscription_status     String    @default("inactive") // active | inactive
+  subscription_expires_at DateTime?
+  logo_url                String?
+  brand_color             String?
+  banner_title            String?
+  banner_text             String?   @db.Text
+  banner_link             String?
+  booking_horizon_days    Int       @default(30) // cuantos dias hacia adelante puede reservar un cliente (<=0 = sin limite)
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  users                User[]
+  customers            Customer[]
+  services             Service[]
+  appointments         Appointment[]
+  schedules            Schedule[]
+  blockings            Blocking[]
+  audit_logs           AuditLog[]
+  UserRole             UserRole[]
+  Category             Category[]
+  NotificationTemplate NotificationTemplate[]
+  Notification         Notification[]
+  branches             Branch[]
+
+  @@map("tenants")
+}
+
+// Suscripcion de pago recurrente del tenant en Mercado Pago (API preapproval,
+// sin plan asociado). Traza el estado del preapproval y el ultimo cobro. El
+// premium efectivo sigue viviendo en Tenant (subscription_status/expires_at);
+// este modelo solo rastrea el vinculo con el proveedor de pagos. 1:1 con Tenant.
+model Subscription {
+  id              String    @id @default(cuid())
+  tenant_id       String    @unique
+  provider        String    @default("mercadopago")
+  preapproval_id  String?   @unique // id del preapproval en MP
+  status          String    @default("pending") // pending | authorized | paused | cancelled
+  payer_email     String?
+  amount          Decimal   @default(0) @db.Decimal(10, 2)
+  currency        String    @default("MXN")
+  last_payment_at DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  @@index([tenant_id])
+  @@map("subscriptions")
+}
+
+// Registro de auditoria de PAGOS de suscripcion. A diferencia de Subscription
+// (estado actual, 1:1 con tenant), aqui se guarda UNA fila por cada evento de
+// cobro/notificacion recibido de Mercado Pago, para trazabilidad e historial.
+// Nunca se borra; es append-only. `raw` guarda el payload crudo del proveedor.
+model PaymentRecord {
+  id              String    @id @default(cuid())
+  tenant_id       String
+  provider        String    @default("mercadopago")
+  preapproval_id  String? // suscripcion asociada en MP
+  payment_id      String? // id del pago/authorized_payment en MP
+  event_type      String? // tipo de notificacion (subscription_preapproval, payment, etc.)
+  status          String? // estado reportado por MP (authorized, approved, rejected, cancelled...)
+  status_detail   String?
+  amount          Decimal   @default(0) @db.Decimal(10, 2)
+  currency        String    @default("MXN")
+  payer_email     String?
+  raw             String?   @db.Text // payload crudo del proveedor (auditoria)
+  created_at      DateTime  @default(now())
+
+  @@index([tenant_id, created_at])
+  @@index([preapproval_id])
+  @@index([payment_id])
+  @@map("payment_records")
+}
+
+model Advertisement {
+  id         String   @id @default(cuid())
+  tenant_id  String
+  title      String
+  body       String?  @db.Text
+  image_url  String?
+  link_url   String?
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([tenant_id, is_active])
+  @@map("ads")
+}
+
+// Banners destacados del landing publico. Los gestiona SOLO el super admin
+// (SUPERADMIN) y alimentan el carrusel de la landing. No estan asociados a un
+// tenant: son globales de la plataforma.
+model LandingBanner {
+  id         String   @id @default(cuid())
+  title      String
+  subtitle   String?  @db.Text
+  image_url  String?
+  link_url   String?
+  sort_order Int      @default(0) // orden ascendente en el carrusel
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([is_active, sort_order])
+  @@map("landing_banners")
+}
+
+model Branch {
+  id           String   @id @default(cuid())
+  tenant_id    String
+  name         String
+  status       String   @default("active") // active | inactive
+  booking_code String?  @unique
+  timezone     String   @default("America/Mexico_City")
+  // Ubicacion de la sucursal (discovery-landing, Req 7). Opcionales: las filas
+  // existentes quedan null. Las coordenadas se capturan manualmente (sin geocoding).
+  address      String?
+  city         String?
+  latitude     Decimal? @db.Decimal(10, 7)
+  longitude    Decimal? @db.Decimal(10, 7)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id])
+
+  @@index([tenant_id, status])
+  @@map("branches")
+}
+
+model Holiday {
+  id         String   @id @default(cuid())
+  branch_id  String
+  date       DateTime
+  label      String?
+  created_at DateTime @default(now())
+
+  @@unique([branch_id, date])
+  @@index([branch_id])
+  @@map("holidays")
+}
+
+model ModuleFlag {
+  id         String   @id @default(cuid())
+  scope      String // 'system' | 'tenant'
+  tenant_id  String?
+  module_key String
+  enabled    Boolean  @default(true)
+  updated_at DateTime @updatedAt
+
+  @@unique([scope, tenant_id, module_key])
+  @@map("module_flags")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  tenant_id     String
+  role_id       String?
+  name          String
+  email         String    @unique
+  phone         String?
+  password_hash String
+  avatar        String?
+  is_active     Boolean   @default(true)
+  last_login    DateTime?
+  last_seen     DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenant_id], references: [id])
+  role         UserRole?     @relation(fields: [role_id], references: [id])
+  devices      Device[]
+  appointments Appointment[]
+  audit_logs   AuditLog[]
+  Professional Professional?
+
+  @@index([tenant_id])
+  @@index([email])
+  @@map("users")
+}
+
+model UserRole {
+  id          String   @id @default(cuid())
+  tenant_id   String
+  name        String
+  description String?
+  permissions Json     @default("[]")
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id])
+  users  User[]
+
+  @@index([tenant_id])
+  @@map("user_roles")
+}
+
+model Customer {
+  id         String    @id @default(cuid())
+  tenant_id  String
+  name       String
+  email      String?
+  phone      String
+  birth_date DateTime?
+  notes      String?
+  tags       Json      @default("[]")
+  status     String    @default("active")
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenant_id], references: [id])
+  appointments Appointment[]
+  Notification Notification[]
+
+  @@index([tenant_id, email])
+  @@index([tenant_id, phone])
+  @@map("customers")
+}
+
+model Service {
+  id             String   @id @default(cuid())
+  tenant_id      String
+  branch_id      String?
+  name           String
+  description    String?
+  duration_mins  Int      @default(60)
+  price          Decimal  @db.Decimal(10, 2)
+  category_id    String?
+  image_url      String?
+  color          String   @default("#3B82F6")
+  is_active      Boolean  @default(true)
+  prep_time_mins Int      @default(0)
+  post_time_mins Int      @default(0)
+  capacity       Int      @default(1)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  tenant        Tenant                @relation(fields: [tenant_id], references: [id])
+  category      Category?             @relation(fields: [category_id], references: [id])
+  professionals ProfessionalService[]
+  appointments  Appointment[]
+
+  @@index([tenant_id, name])
+  @@index([branch_id])
+  @@map("services")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  tenant_id   String
+  name        String
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenant_id], references: [id])
+  services Service[]
+
+  @@index([tenant_id, name])
+  @@map("categories")
+}
+
+model ProfessionalService {
+  id              String   @id @default(cuid())
+  professional_id String
+  service_id      String
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  professional Professional @relation(fields: [professional_id], references: [id])
+  service      Service      @relation(fields: [service_id], references: [id])
+
+  @@unique([professional_id, service_id])
+  @@index([professional_id])
+  @@index([service_id])
+  @@map("professional_services")
+}
+
+model Professional {
+  id          String   @id @default(cuid())
+  user_id     String   @unique
+  schedule_id String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user         User                  @relation(fields: [user_id], references: [id])
+  schedule     Schedule?             @relation(fields: [schedule_id], references: [id])
+  services     ProfessionalService[]
+  appointments Appointment[]
+  Availability Availability[]
+  Notification Notification[]
+  Blocking     Blocking[]
+
+  @@map("professionals")
+}
+
+model Schedule {
+  id         String   @id @default(cuid())
+  tenant_id  String
+  branch_id  String?
+  name       String
+  timezone   String   @default("America/New_York")
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenant_id], references: [id])
+  days          ScheduleDay[]
+  professionals Professional[]
+
+  @@index([tenant_id, is_active])
+  @@index([branch_id])
+  @@map("schedules")
+}
+
+model ScheduleDay {
+  id          String  @id @default(cuid())
+  schedule_id String
+  day_of_week Int
+  open_time   String
+  close_time  String
+  is_active   Boolean @default(true)
+
+  schedule Schedule @relation(fields: [schedule_id], references: [id])
+
+  @@unique([schedule_id, day_of_week])
+  @@map("schedule_days")
+}
+
+model Availability {
+  id              String   @id @default(cuid())
+  professional_id String
+  start_time      DateTime
+  end_time        DateTime
+  is_available    Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  professional Professional @relation(fields: [professional_id], references: [id])
+
+  @@index([professional_id, start_time])
+  @@index([start_time, end_time])
+  @@map("availabilities")
+}
+
+model Appointment {
+  id              String            @id @default(cuid())
+  tenant_id       String
+  branch_id       String?
+  customer_id     String
+  service_id      String
+  professional_id String?
+  start_time      DateTime
+  end_time        DateTime
+  status          AppointmentStatus @default(PENDING)
+  notes           String?
+  location        String?
+  video_call_url  String?
+  google_event_id String?
+  modality        String?           @default("in_person")
+  archived        Boolean           @default(false)
+  booked_by_email String?
+  booked_by_name  String?
+  payment_status  PaymentStatus     @default(unpaid)
+  amount_total    Decimal           @default(0) @db.Decimal(10, 2)
+  amount_paid     Decimal           @default(0) @db.Decimal(10, 2)
+  currency        String            @default("MXN")
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenant_id], references: [id])
+  customer      Customer       @relation(fields: [customer_id], references: [id])
+  service       Service        @relation(fields: [service_id], references: [id])
+  professional  Professional?  @relation(fields: [professional_id], references: [id])
+  notifications Notification[]
+  User          User?          @relation(fields: [userId], references: [id])
+  userId        String?
+
+  @@index([tenant_id, start_time])
+  @@index([customer_id])
+  @@index([service_id])
+  @@index([professional_id, start_time])
+  @@index([branch_id])
+  @@map("appointments")
+}
+
+model AppointmentNote {
+  id             String   @id @default(cuid())
+  tenant_id      String
+  appointment_id String
+  author_id      String?
+  body           String   @db.Text
+  created_at     DateTime @default(now())
+
+  @@index([appointment_id])
+  @@index([tenant_id])
+  @@map("appointment_notes")
+}
+
+model NotificationTemplate {
+  id             String   @id @default(cuid())
+  tenant_id      String
+  name           String
+  title_template String
+  body_template  String
+  channels       Json     @default("[\"push\"]")
+  time_before    Int      @default(0)
+  time_unit      String   @default("hours")
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenant_id], references: [id])
+  notifications Notification[]
+
+  @@index([tenant_id, name])
+  @@map("notification_templates")
+}
+
+model Notification {
+  id              String              @id @default(cuid())
+  tenant_id       String
+  customer_id     String?
+  professional_id String?
+  appointment_id  String?
+  template_id     String?
+  channel         NotificationChannel
+  status          NotificationStatus  @default(PENDING)
+  title           String
+  body            String
+  sent_at         DateTime?
+  error_message   String?
+  read_at         DateTime?
+  event_type      String?
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+
+  tenant       Tenant                @relation(fields: [tenant_id], references: [id])
+  customer     Customer?             @relation(fields: [customer_id], references: [id])
+  professional Professional?         @relation(fields: [professional_id], references: [id])
+  appointment  Appointment?          @relation(fields: [appointment_id], references: [id])
+  template     NotificationTemplate? @relation(fields: [template_id], references: [id])
+
+  @@index([tenant_id, status])
+  @@index([customer_id])
+  @@index([appointment_id])
+  @@index([tenant_id, read_at])
+  @@map("notifications")
+}
+
+model Blocking {
+  id              String   @id @default(cuid())
+  tenant_id       String
+  professional_id String?
+  title           String
+  description     String?
+  start_time      DateTime
+  end_time        DateTime
+  type            String   @default("vacation")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenant_id], references: [id])
+  professional Professional? @relation(fields: [professional_id], references: [id])
+
+  @@index([tenant_id, start_time])
+  @@index([professional_id, start_time])
+  @@map("blockings")
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  tenant_id     String
+  user_id       String?
+  action        AuditAction
+  resource_type String
+  resource_id   String
+  ip_address    String?
+  user_agent    String?
+  result        String      @default("success")
+  details       String?     @db.Text
+  created_at    DateTime    @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id])
+  user   User?  @relation(fields: [user_id], references: [id])
+
+  @@index([tenant_id, created_at])
+  @@index([user_id, created_at])
+  @@map("audit_logs")
+}
+
+model Device {
+  id          String    @id @default(cuid())
+  user_id     String
+  device_id   String
+  device_name String?
+  platform    String
+  token       String    @unique
+  is_active   Boolean   @default(true)
+  last_used   DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([device_id])
+  @@map("devices")
+}
+
+model AuthorizedAdmin {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  status     String   @default("active") // active | revoked
+  tenant_id  String?
+  created_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([status])
+  @@map("authorized_admins")
+}
+
+// Asistentes (sub-usuarios) de un emprendedor (ADMIN). Un asistente activo
+// puede gestionar UNICAMENTE las citas del tenant del emprendedor que lo
+// invito. No es admin global ni accede a otros tenants ni a configuracion
+// sensible. El rol efectivo ASSISTANT se resuelve por email en el login.
+model Assistant {
+  id         String   @id @default(cuid())
+  tenant_id  String
+  email      String
+  status     String   @default("active") // active | revoked
+  invited_by String? // userId del emprendedor que invito
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([tenant_id, email])
+  @@index([email, status])
+  @@index([tenant_id, status])
+  @@map("assistants")
+}
+
+// Loyalty & Rewards
+enum LoyaltyProgramType {
+  ACCUMULATION
+  PERIODIC
+}
+
+enum LoyaltyRewardStatus {
+  EARNED
+  CLAIMED
+  REDEEMED
+  EXPIRED
+}
+
+model LoyaltyProgram {
+  id            String             @id @default(cuid())
+  tenant_id     String
+  name          String
+  type          LoyaltyProgramType @default(ACCUMULATION)
+  goal          Int
+  window_days   Int?
+  reward_text   String
+  validity_days Int?
+  is_active     Boolean            @default(true)
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+
+  @@index([tenant_id, is_active])
+  @@map("loyalty_programs")
+}
+
+model LoyaltyProgress {
+  id          String   @id @default(cuid())
+  tenant_id   String
+  program_id  String
+  customer_id String
+  count       Int      @default(0)
+  updated_at  DateTime @updatedAt
+
+  @@unique([program_id, customer_id])
+  @@index([tenant_id])
+  @@map("loyalty_progress")
+}
+
+model LoyaltyCountedAppointment {
+  id             String   @id @default(cuid())
+  program_id     String
+  appointment_id String
+  customer_id    String
+  counted_at     DateTime @default(now())
+
+  @@unique([program_id, appointment_id])
+  @@index([program_id, customer_id])
+  @@map("loyalty_counted_appointments")
+}
+
+model LoyaltyReward {
+  id          String              @id @default(cuid())
+  tenant_id   String
+  program_id  String
+  customer_id String
+  status      LoyaltyRewardStatus @default(EARNED)
+  reward_text String
+  earned_at   DateTime            @default(now())
+  expires_at  DateTime?
+  claim_code  String?             @unique // codigo generado al reclamar (unico)
+  claimed_at  DateTime? // fecha en que el cliente reclamo la recompensa
+  redeemed_at DateTime?
+  redeemed_by String?
+  created_at  DateTime            @default(now())
+  updated_at  DateTime            @updatedAt
+
+  @@index([tenant_id, status])
+  @@index([customer_id, status])
+  @@map("loyalty_rewards")
+}
+
+// Resena del cliente sobre una cita. Una resena por cita (appointment_id unico).
+// Sin relaciones formales (scoping por id), coherente con Assistant/AuditLog.
+model Review {
+  id             String   @id @default(cuid())
+  tenant_id      String
+  appointment_id String   @unique
+  customer_id    String
+  rating         Int
+  comment        String?  @db.Text
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@index([tenant_id])
+  @@map("reviews")
+}
+
+// Favorito de un usuario hacia un negocio (tenant). Unico por par usuario-negocio.
+// Sin relaciones formales (scoping por id).
+model Favorite {
+  id         String   @id @default(cuid())
+  user_id    String
+  tenant_id  String
+  created_at DateTime @default(now())
+
+  @@unique([user_id, tenant_id])
+  @@index([user_id])
+  @@map("favorites")
+}
+
+// Google Workspace integration per tenant (emprendedor/ADMIN).
+// Almacena los tokens OAuth (cifrados) y los toggles de la integracion.
+// 1:1 con Tenant via tenant_id unico. Los tokens NUNCA se exponen en API ni logs.
+model GoogleAccount {
+  id              String    @id @default(cuid())
+  tenant_id       String    @unique
+  google_email    String
+  google_sub      String?
+  access_token    String?   @db.Text // cifrado
+  refresh_token   String    @db.Text // cifrado (obligatorio)
+  token_expiry    DateTime?
+  scopes          String?   @db.Text
+  online_sessions Boolean   @default(false) // habilita modalidad en linea + Meet
+  save_contacts   Boolean   @default(false) // guardar clientes en Contacts
+  status          String    @default("connected") // connected | revoked
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  @@map("google_accounts")
+}
+
+// Promociones informativas por sucursal (branch-promotions). Solo negocios
+// premium las gestionan; al cliente se muestran las vigentes (is_active y dentro
+// de [starts_at, ends_at]). Sin relaciones formales (scoping por id).
+model Promotion {
+  id          String    @id @default(cuid())
+  tenant_id   String
+  branch_id   String
+  title       String
+  description String?   @db.Text
+  image_url   String?
+  starts_at   DateTime?
+  ends_at     DateTime?
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@index([branch_id, is_active])
+  @@index([tenant_id])
+  @@map("promotions")
+}
+
+// Politica de cancelacion configurable por tenant (appointment-waitlist-cancellation).
+// 1:1 con Tenant via tenant_id unico. Defaults: 24h de gracia, 1 cancelacion
+// permitida, penalizacion 0, reinicio del periodo cada 30 dias.
+model CancellationPolicy {
+  id                    String   @id @default(cuid())
+  tenant_id             String   @unique
+  grace_hours           Int      @default(24)
+  allowed_cancellations Int      @default(1)
+  penalty_amount        Decimal  @default(0) @db.Decimal(10, 2)
+  reset_days            Int      @default(30)
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@map("cancellation_policies")
+}
+
+// Estado de cancelaciones de un cliente dentro del periodo vigente. Rastrea el
+// contador de cancelaciones y la deuda acumulada. Unico por (tenant, cliente).
+model CustomerCancellationState {
+  id                String   @id @default(cuid())
+  tenant_id         String
+  customer_id       String
+  count             Int      @default(0)
+  period_started_at DateTime @default(now())
+  debt_amount       Decimal  @default(0) @db.Decimal(10, 2)
+  debt_reason       String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([tenant_id, customer_id])
+  @@index([tenant_id])
+  @@map("customer_cancellation_state")
+}
+
+// Entrada de la lista de espera (waitlist) FIFO por servicio/dia. El emprendedor
+// ofrece semiautomaticamente el espacio abierto y el cliente confirma.
+model WaitlistEntry {
+  id                     String         @id @default(cuid())
+  tenant_id              String
+  branch_id              String?
+  service_id             String
+  customer_id            String
+  desired_date           DateTime
+  desired_start          DateTime?
+  status                 WaitlistStatus @default(WAITING)
+  offered_appointment_id String?
+  created_at             DateTime       @default(now())
+  updated_at             DateTime       @updatedAt
+
+  @@index([tenant_id, service_id, status, created_at])
+  @@index([customer_id])
+  @@map("waitlist_entries")
+}

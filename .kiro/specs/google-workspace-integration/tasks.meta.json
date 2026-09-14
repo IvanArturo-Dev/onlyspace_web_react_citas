@@ -1,0 +1,141 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Modelo de datos y migracion": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413341607
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413355171
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416143164
+      }
+    ],
+    "2. Utilidad de cifrado de tokens": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413341793
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416146982
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416395116
+      }
+    ],
+    "3. Extender google-oauth.service para scopes de Workspace": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413345235
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416402388
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416508300
+      }
+    ],
+    "4. googleAccountService (conexion, tokens, settings)": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413345345
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416511774
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416737226
+      }
+    ],
+    "5. googleIntegrationService (Calendar/Meet/Contacts)": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413345486
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416745056
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416949177
+      }
+    ],
+    "6. Endpoints ADMIN en me.controller / me.routes": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413345582
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788416954378
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788417137360
+      }
+    ],
+    "7. Hooks best-effort en appointment.service.ts": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413345720
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788417140842
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788417923401
+      }
+    ],
+    "8. Frontend: ajustes de integracion + modalidad en portal": [
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788413345817
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788417927407
+      },
+      {
+        "executionId": "2ad42bc7-f999-4a7b-bb60-44b9ebcc0f09",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788418479528
+      }
+    ]
+  }
+}

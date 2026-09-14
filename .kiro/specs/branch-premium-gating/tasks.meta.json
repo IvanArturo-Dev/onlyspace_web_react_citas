@@ -1,0 +1,90 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Backend: helpers de premium y sucursal principal": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500662481
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500668398
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500769845
+      }
+    ],
+    "2. Backend: gating de gestion de sucursales (branchService)": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500662546
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500773279
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500978401
+      }
+    ],
+    "3. Backend: reserva publica de sucursales extra bloqueada (publicService)": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500663758
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500982361
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501151157
+      }
+    ],
+    "4. Backend: bloquear agendado en sucursal extra siendo free (appointmentService)": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500663808
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501155052
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501346540
+      }
+    ],
+    "5. Frontend: pantalla de sucursales refleja el gating": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788500663861
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501350041
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501439393
+      }
+    ]
+  }
+}

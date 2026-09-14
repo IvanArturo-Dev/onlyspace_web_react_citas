@@ -1,0 +1,107 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Schema: ubicacion de sucursal + branchService acepta/valida": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501443139
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501449865
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501620761
+      }
+    ],
+    "2. Backend: discoveryService (haversine + discover + categories)": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501443181
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501624541
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501850885
+      }
+    ],
+    "3. Backend: rutas publicas discover/categories": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501443231
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501854815
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501985618
+      }
+    ],
+    "4. Frontend: servicio y tipos de descubrimiento": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501443272
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501990262
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788502055248
+      }
+    ],
+    "5. Frontend: Sucursales del emprendedor captura direccion/coordenadas": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501443335
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788502059232
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788502190098
+      }
+    ],
+    "6. Frontend: Landing de descubrimiento": [
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788501443381
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788502194009
+      },
+      {
+        "executionId": "8cda5b16-0b70-449f-9ad4-53712e2e68bf",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788502405568
+      }
+    ]
+  }
+}

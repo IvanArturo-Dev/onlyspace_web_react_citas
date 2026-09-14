@@ -1,0 +1,91 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Schema: CLAIMED + claim_code/claimed_at, modelos Review y Favorite": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410022
+      },
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503415306
+      },
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503686021
+      }
+    ],
+    "2. Backend: reclamo y canje de recompensas (loyaltyService)": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410074
+      },
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503690253
+      },
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503898140
+      }
+    ],
+    "3. Backend: review.service (resenas + promedio)": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410260
+      },
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503902236
+      }
+    ],
+    "4. Backend: favorite.service (favoritos)": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410315
+      },
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503908252
+      }
+    ],
+    "5. Backend: endpoints /me/* + integrar rating en discover": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410363
+      }
+    ],
+    "6. Frontend: servicios y tipos del cliente": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410405
+      }
+    ],
+    "7. Frontend: pantalla Mis Cupones + progreso de lealtad": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410467
+      }
+    ],
+    "8. Frontend: Mis Citas (favoritos, cercania, resenas) + rating en descubrimiento": [
+      {
+        "executionId": "af13d29d-a54c-42ff-b1b7-777785fb3fdb",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788503410546
+      }
+    ]
+  }
+}

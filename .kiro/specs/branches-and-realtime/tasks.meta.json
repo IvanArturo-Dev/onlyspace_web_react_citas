@@ -1,0 +1,272 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Migracion de datos (backfill de sucursales)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788221909193
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222279747
+      }
+    ],
+    "1. Modelo de datos: Branch, Holiday, ModuleFlag, last_seen, branch_id": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222279887
+      }
+    ],
+    "2. Utilidades y middlewares transversales": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222310380
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222477216
+      }
+    ],
+    "3.1 Pruebas de sucursales (Property 1, Property 5)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222485684
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222703056
+      }
+    ],
+    "3. Servicio y endpoints de sucursales (Emprendedor)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222703187
+      }
+    ],
+    "4.1 Pruebas de config por sucursal (Property 5)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788222919190
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223218357
+      }
+    ],
+    "4. Config por sucursal: horarios, asuetos, categorias": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223218517
+      }
+    ],
+    "5.1 Pruebas de admin de usuarios/modulos (Property 6, 7, 9)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223224291
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223617868
+      }
+    ],
+    "5. Administracion de usuarios y modulos (servicios base)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223618033
+      }
+    ],
+    "6.1 Pruebas de disponibilidad/reserva por sucursal (Property 3, 4)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223652410
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223916928
+      }
+    ],
+    "6. Disponibilidad y reserva por sucursal": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223917103
+      }
+    ],
+    "7.1 Pruebas de portal/busqueda (Property 2)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788223924297
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224207169
+      }
+    ],
+    "7. Portal publico por sucursal + busqueda": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224207305
+      }
+    ],
+    "8.1 Pruebas de reservaciones (Property 5)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224213737
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224430913
+      }
+    ],
+    "8. Reservaciones del emprendedor (gestion por sucursal)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224431378
+      }
+    ],
+    "9.1 Pruebas de realtime (Property 8)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224437490
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224621219
+      }
+    ],
+    "9. Monitoreo en tiempo real (backend, Super Admin)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224621365
+      }
+    ],
+    "10.1 Pruebas de endpoints admin global (Property 6, 7, 9)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224627960
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224781724
+      }
+    ],
+    "10. Endpoints de administracion global (Super Admin)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224781944
+      }
+    ],
+    "11. Alta de emprendedor con sucursal inicial (Super Admin)": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224788149
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224907908
+      }
+    ],
+    "12. Frontend Super Admin: dashboard en tiempo real": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788224923249
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788226033745
+      }
+    ],
+    "13. Frontend Super Admin: usuarios y modulos": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788226039716
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788226217490
+      }
+    ],
+    "14. Frontend Emprendedor: sucursales y config por sucursal": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788226224451
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788226599876
+      }
+    ],
+    "15. Frontend Emprendedor: dashboard y reservaciones": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788226605872
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788229209308
+      }
+    ],
+    "16. Frontend Cliente: busqueda de sucursal y portal": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788229287702
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788229516614
+      }
+    ],
+    "17. Verificacion end-to-end": [
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788229520096
+      },
+      {
+        "executionId": "d2246b81-35e7-42c4-9be1-97e6cfb9392a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788230467680
+      }
+    ]
+  }
+}

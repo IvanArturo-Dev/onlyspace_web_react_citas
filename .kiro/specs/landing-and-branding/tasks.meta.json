@@ -1,0 +1,138 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Esquema: suscripcion, branding y modelo Advertisement": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371818732
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371838567
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371952455
+      }
+    ],
+    "2.1 Pruebas de suscripcion (Property 1, 3)": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371818800
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371976989
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372354366
+      }
+    ],
+    "3.1 Pruebas de branding/publico (Property 2, 4)": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371819185
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371977936
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372355074
+      }
+    ],
+    "4. Frontend: landing publica + componentes de anuncios": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371819305
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371982646
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372360297
+      }
+    ],
+    "5. Frontend: personalizacion del emprendedor + suscripcion en super admin": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371819389
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372367904
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372691066
+      }
+    ],
+    "6. Frontend: portal por codigo con branding + anuncios": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371819482
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372696481
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372829868
+      }
+    ],
+    "7. Verificacion end-to-end": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788371819676
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372835360
+      },
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788373263372
+      }
+    ],
+    "2. Backend: suscripcion (super admin) + isPremiumEffective": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372354520
+      }
+    ],
+    "3. Backend: branding + anuncios del emprendedor + info publico ampliado": [
+      {
+        "executionId": "86a7b7ce-dbd0-441e-a263-e88885ebf6a7",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788372355152
+      }
+    ]
+  }
+}

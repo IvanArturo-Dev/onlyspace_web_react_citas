@@ -1,0 +1,88 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Pruebas de anti-duplicado (Property 1, 2)": [
+      {
+        "executionId": "63c5d8c7-c728-426c-b370-1ea4aec779b2",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788313928548
+      }
+    ],
+    "1. Regla anti-duplicado (cliente/dia/servicio)": [
+      {
+        "executionId": "63c5d8c7-c728-426c-b370-1ea4aec779b2",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788313928647
+      }
+    ],
+    "2. Nuevo mensaje por defecto de recordatorio": [
+      {
+        "executionId": "63c5d8c7-c728-426c-b370-1ea4aec779b2",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788313934265
+      }
+    ],
+    "3.1 Pruebas de permisos (Property 4)": [
+      {
+        "executionId": "63c5d8c7-c728-426c-b370-1ea4aec779b2",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788313935119
+      }
+    ],
+    "3. Permisos: clientes solo para staff": [
+      {
+        "executionId": "63c5d8c7-c728-426c-b370-1ea4aec779b2",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788313935265
+      }
+    ],
+    "4. Frontend: renombrar a Colaboradores + navegacion por rol": [
+      {
+        "executionId": "63c5d8c7-c728-426c-b370-1ea4aec779b2",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788313940680
+      },
+      {
+        "executionId": "1c9311e5-e443-4c02-a778-6f9d1a028256",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788369041514
+      }
+    ],
+    "5. Frontend: dashboard del emprendedor mejorado": [
+      {
+        "executionId": "1c9311e5-e443-4c02-a778-6f9d1a028256",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788369060195
+      },
+      {
+        "executionId": "1c9311e5-e443-4c02-a778-6f9d1a028256",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788369217628
+      }
+    ],
+    "6. Frontend: Citas (acciones rapidas, Hoy/Proximas, indicadores)": [
+      {
+        "executionId": "1c9311e5-e443-4c02-a778-6f9d1a028256",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788369223323
+      },
+      {
+        "executionId": "1c9311e5-e443-4c02-a778-6f9d1a028256",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788369457253
+      }
+    ],
+    "7. Verificacion end-to-end": [
+      {
+        "executionId": "1c9311e5-e443-4c02-a778-6f9d1a028256",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788369465245
+      },
+      {
+        "executionId": "1c9311e5-e443-4c02-a778-6f9d1a028256",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788370068051
+      }
+    ]
+  }
+}

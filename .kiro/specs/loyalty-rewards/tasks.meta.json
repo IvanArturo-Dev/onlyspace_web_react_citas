@@ -1,0 +1,205 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Modelo de datos de lealtad": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239486026
+      },
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239495822
+      },
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239654553
+      }
+    ],
+    "2.1 Pruebas de programas (Property 4)": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239486153
+      },
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239677276
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279088150
+      }
+    ],
+    "3.1 Pruebas del motor (Property 1, 2, 3, 7)": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239486679
+      },
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239678178
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279089088
+      }
+    ],
+    "4.1 Pruebas de reversa (Property 5)": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239486785
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279108800
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279230663
+      }
+    ],
+    "5.1 Pruebas de canje/expiracion (Property 6)": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239486873
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279246084
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279538669
+      }
+    ],
+    "6.1 Endpoints de lealtad por rol": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239486950
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279548809
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280088318
+      }
+    ],
+    "7. Frontend emprendedor: seccion Lealtad": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239487024
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280113271
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280492956
+      }
+    ],
+    "8. Frontend cliente: progreso y recompensas": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239487099
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280726510
+      }
+    ],
+    "9. Frontend super admin: metricas de lealtad": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239487183
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280499503
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280727366
+      }
+    ],
+    "10. Verificacion end-to-end": [
+      {
+        "executionId": "e5d5715e-ab25-44fb-833a-bc5e9c0a6235",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788239487301
+      },
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280733079
+      },
+      {
+        "executionId": "e3af729b-d699-4050-9fef-c2b159e63a8a",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788285680348
+      }
+    ],
+    "2. Servicio de programas (CRUD)": [
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279088627
+      }
+    ],
+    "3. Motor de lealtad: acumulacion y otorgamiento": [
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279089139
+      }
+    ],
+    "4. Reversa de completado": [
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279230725
+      }
+    ],
+    "5. Canje y expiracion de recompensas": [
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788279538857
+      }
+    ],
+    "6. Enganche al cambio de estado de cita": [
+      {
+        "executionId": "81704300-2a12-478c-932a-49a22408ca03",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788280089022
+      }
+    ]
+  }
+}

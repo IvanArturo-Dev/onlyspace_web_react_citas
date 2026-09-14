@@ -1,0 +1,198 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Modelo de datos: codigo de negocio, autorizaciones y rol CLIENT": [
+      {
+        "executionId": "f17c131e-2265-468e-9e85-adfc41d40571",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788213464573
+      },
+      {
+        "executionId": "f17c131e-2265-468e-9e85-adfc41d40571",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788213870722
+      }
+    ],
+    "2.1 Pruebas de la utilidad de codigo": [
+      {
+        "executionId": "9f37d6bc-f8d5-48e0-8597-ab6bc099106e",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788213928786
+      },
+      {
+        "executionId": "9f37d6bc-f8d5-48e0-8597-ab6bc099106e",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214068884
+      }
+    ],
+    "2. Utilidad de codigo de negocio (6 chars, sin ambiguos)": [
+      {
+        "executionId": "9f37d6bc-f8d5-48e0-8597-ab6bc099106e",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214068941
+      }
+    ],
+    "3.1 Pruebas de autorizacion (Super Admin)": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214119337
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214423721
+      }
+    ],
+    "3. Servicio y endpoints de autorizacion (Super Admin)": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214423796
+      }
+    ],
+    "4.1 Pruebas de aislamiento por tenant": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214430404
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214741070
+      }
+    ],
+    "4. Configuracion del dueno: categorias y horarios (aislamiento por tenant)": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214741205
+      }
+    ],
+    "5.1 Pruebas de disponibilidad": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788214747147
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215035975
+      }
+    ],
+    "5. Algoritmo de disponibilidad publica": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215036209
+      }
+    ],
+    "6.1 Pruebas de reserva": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215041271
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215340670
+      }
+    ],
+    "6. Reserva publica con no-doble-reserva": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215340937
+      }
+    ],
+    "7.1 Pruebas de rol en login y citas del cliente": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215346474
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215645296
+      }
+    ],
+    "7. Citas del cliente y asignacion de rol en login": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215645576
+      }
+    ],
+    "8. Frontend Super Admin: pantalla de autorizaciones": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215660605
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215812020
+      }
+    ],
+    "9. Frontend Admin: gestion de citas con seguimiento": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215817610
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215936527
+      }
+    ],
+    "10. Frontend Admin: categorias, horarios y codigo/QR": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788215941505
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788216353835
+      }
+    ],
+    "11. Frontend Cliente: portal publico por codigo/QR": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788216359319
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788216856719
+      }
+    ],
+    "12. Frontend Cliente: mis citas y confirmacion": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788216863508
+      }
+    ],
+    "13. Verificacion end-to-end": [
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788216870058
+      },
+      {
+        "executionId": "a06e2bb9-a4de-4225-8d66-b084293fc108",
+        "chatSessionId": "sess_8cf19438-eeb0-4498-87c1-6956cae5db44",
+        "timestamp": 1788218728822
+      }
+    ]
+  }
+}
