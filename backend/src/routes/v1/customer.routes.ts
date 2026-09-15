@@ -45,6 +45,27 @@ customerRoutes.post(
   customerController.confirmPenaltyPayment
 );
 
+// --- Comportamiento y estado del cliente (Requirement 2.1, 4.1, 4.3) -------
+// Tienen un segmento estatico extra (/behavior, /status) por lo que no
+// colisionan con las genericas /:id; se declaran ANTES de PUT/PATCH/DELETE /:id
+// siguiendo el patron de /:id/cancellation-state.
+
+// GET /v1/customers/:id/behavior — metricas de comportamiento del cliente (ADMIN).
+customerRoutes.get(
+  '/:id/behavior',
+  ...authenticated,
+  requireAdmin,
+  customerController.behavior
+);
+
+// PATCH /v1/customers/:id/status — bloquear/desbloquear cliente (ADMIN).
+customerRoutes.patch(
+  '/:id/status',
+  ...authenticated,
+  requireAdmin,
+  customerController.setStatus
+);
+
 // PUT /v1/customers/:id
 customerRoutes.put('/:id', ...authenticated, requireStaff, customerController.update);
 

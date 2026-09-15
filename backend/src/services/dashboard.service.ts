@@ -260,6 +260,100 @@ export const dashboardService = {
     return occupancy;
   },
 
+  /**
+   * Series mensuales de comportamiento de citas de los ultimos N meses.
+   * Agrega por mes de start_time contando COMPLETED (attended), CANCELLED y NO_SHOW.
+   * Devuelve un array ascendente por mes: [{ month: 'YYYY-MM', attended, cancelled, no_show }].
+   * Query raw parametrizada por tenantId (sin interpolacion de strings) para evitar inyeccion.
+   */
+  async getMonthlyBehavior(tenantId: string, months: number = 6) {
+    // Sanitizar el numero de meses: entero >= 1. Se usa como INTERVAL, por eso
+    // debe validarse; nunca proviene de un string interpolado sin control.
+    const safeMonths = Number.isFinite(months) && months > 0 ? Math.floor(months) : 6;
+
+    // Limite inferior: primer dia del mes que queda (safeMonths - 1) meses atras.
+    const now = new Date();
+    const startBoundary = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (safeMonths - 1), 1, 0, 0, 0));
+
+    const rows: any = await prisma.$queryRaw`
+      SELECT
+        DATE_FORMAT(start_time, '%Y-%m') as month,
+        SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as attended,
+        SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END) as cancelled,
+        SUM(CASE WHEN status = 'NO_SHOW' THEN 1 ELSE 0 END) as no_show
+      FROM appointments
+      WHERE tenant_id = ${tenantId}
+        AND start_time >= ${startBoundary}
+      GROUP BY DATE_FORMAT(start_time, '%Y-%m')
+      ORDER BY month ASC
+    `;
+
+    return rows.map((r: any) => ({
+      month: r.month,
+      attended: Number(r.attended) || 0,
+      cancelled: Number(r.cancelled) || 0,
+      no_show: Number(r.no_show) || 0,
+    }));
+  },
+
+  /**
+   * Rankings de clientes del tenant.
+   * - topAttendance: top N por citas COMPLETED.
+   * - topNoShow: top N por citas NO_SHOW.
+   * - topRewards: top N por recompensas de lealtad. Se cuentan EARNED + CLAIMED
+   *   (recompensas efectivamente obtenidas por el cliente); se excluyen EXPIRED
+   *   porque representan recompensas que caducaron sin uso y no reflejan fidelidad.
+   * Todas las consultas estan scoped por tenant y parametrizadas por tenantId.
+   */
+  async getClientRankings(tenantId: string, limit: number = 5) {
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 5;
+
+    const topAttendance: any = await prisma.$queryRaw`
+      SELECT a.customer_id as customer_id, c.name as name, COUNT(*) as count
+      FROM appointments a
+      JOIN customers c ON c.id = a.customer_id
+      WHERE a.tenant_id = ${tenantId}
+        AND a.status = 'COMPLETED'
+      GROUP BY a.customer_id, c.name
+      ORDER BY count DESC
+      LIMIT ${safeLimit}
+    `;
+
+    const topNoShow: any = await prisma.$queryRaw`
+      SELECT a.customer_id as customer_id, c.name as name, COUNT(*) as count
+      FROM appointments a
+      JOIN customers c ON c.id = a.customer_id
+      WHERE a.tenant_id = ${tenantId}
+        AND a.status = 'NO_SHOW'
+      GROUP BY a.customer_id, c.name
+      ORDER BY count DESC
+      LIMIT ${safeLimit}
+    `;
+
+    const topRewards: any = await prisma.$queryRaw`
+      SELECT lr.customer_id as customer_id, c.name as name, COUNT(*) as count
+      FROM loyalty_rewards lr
+      JOIN customers c ON c.id = lr.customer_id
+      WHERE lr.tenant_id = ${tenantId}
+        AND lr.status IN ('EARNED', 'CLAIMED')
+      GROUP BY lr.customer_id, c.name
+      ORDER BY count DESC
+      LIMIT ${safeLimit}
+    `;
+
+    const mapRow = (r: any) => ({
+      customer_id: r.customer_id,
+      name: r.name,
+      count: Number(r.count) || 0,
+    });
+
+    return {
+      topAttendance: topAttendance.map(mapRow),
+      topNoShow: topNoShow.map(mapRow),
+      topRewards: topRewards.map(mapRow),
+    };
+  },
+
   async getReport(tenantId: string, type: string, startDate: string, endDate: string) {
     switch (type) {
       case 'appointments':

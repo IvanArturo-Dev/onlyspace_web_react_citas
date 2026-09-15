@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../types/express';
 import { prisma } from '../database/prisma.service';
 import { HttpError } from '../utils/errors';
-import { mercadopagoService } from '../services/mercadopago.service';
+import { mercadopagoService, getSubscriptionPriceMxn } from '../services/mercadopago.service';
 import { isPremiumEffective } from '../services/subscription.service';
 
 /**
@@ -114,6 +114,7 @@ export const subscriptionMpController = {
           subscription_status: tenant.subscription_status,
           subscription_expires_at: tenant.subscription_expires_at,
           days_left: daysLeft,
+          price_mxn: getSubscriptionPriceMxn(),
         },
       });
     } catch (error: any) {

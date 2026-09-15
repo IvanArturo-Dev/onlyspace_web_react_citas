@@ -173,6 +173,7 @@ describe('branchService - Property 7: tenant isolation', () => {
       city: null,
       latitude: null,
       longitude: null,
+      maps_url: null,
     });
   });
 

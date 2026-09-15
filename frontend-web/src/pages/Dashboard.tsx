@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { useBranchStore } from "../store/useBranchStore";
 import { dataService } from "../services/data.service";
+import type { MonthlyBehavior, ClientRankings } from "../services/data.service";
 import { useBrandingStore } from "../store/useBrandingStore";
 import { usePremium } from "../store/usePremium";
 import type { Branding } from "../services/branding.service";
@@ -15,6 +16,7 @@ import DonutChart from "../components/charts/DonutChart";
 import type { DonutSegment } from "../components/charts/DonutChart";
 import DayBarChart from "../components/charts/DayBarChart";
 import type { Bar } from "../components/charts/DayBarChart";
+import MiniMonthlyChart from "../components/charts/MiniMonthlyChart";
 
 const ALL_BRANCHES = "__all__";
 
@@ -132,6 +134,10 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState<Appointment[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Datos de comportamiento del dashboard (best-effort): si fallan, no rompen el
+  // dashboard; solo se muestran las secciones vacias / con texto discreto.
+  const [monthly, setMonthly] = useState<MonthlyBehavior[]>([]);
+  const [rankings, setRankings] = useState<ClientRankings | null>(null);
   const branding = useBrandingStore((st) => st.branding);
   const loadBranding = useBrandingStore((st) => st.load);
   // Plan premium del tenant (best-effort). Muestra el badge "Premium" en el encabezado.
@@ -144,6 +150,16 @@ export default function Dashboard() {
     // compartido para mostrarla en el panel; se actualiza sola al guardar en
     // Personalizacion. Es su vista interna, no depende de premium.
     loadBranding();
+    // Comportamiento por mes y rankings de clientes (best-effort). No bloquean el
+    // dashboard: ante cualquier error se dejan vacios y la UI muestra texto discreto.
+    dataService
+      .getMonthlyBehavior(6)
+      .then((rows) => setMonthly(rows))
+      .catch(() => setMonthly([]));
+    dataService
+      .getClientRankings(5)
+      .then((r) => setRankings(r))
+      .catch(() => setRankings(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -382,6 +398,12 @@ export default function Dashboard() {
               caption="Pendientes en el rango"
               accent="var(--warning)"
             />
+            <MetricCard
+              label="Cancelaciones"
+              value={String(metrics.byStatus.CANCELLED)}
+              caption="Canceladas en el rango"
+              accent="var(--danger)"
+            />
           </div>
 
           {/* ---------- GRAFICAS ---------- */}
@@ -398,6 +420,20 @@ export default function Dashboard() {
                 <DayBarChart bars={dayBars} />
               </div>
             )}
+
+            {/* Comportamiento por mes: mini grafica compacta (best-effort). */}
+            <div style={{ ...card, ...styles.chartCard }}>
+              <h3 style={styles.chartTitle}>Comportamiento por mes</h3>
+              <MiniMonthlyChart data={monthly} height={170} />
+            </div>
+          </div>
+
+          {/* ---------- CLIENTES DESTACADOS (rankings compactos) ---------- */}
+          <h2 style={styles.sectionTitle}>Clientes destacados</h2>
+          <div style={styles.rankingsGrid}>
+            <RankingCard title="Top asistencias" rows={rankings?.topAttendance} accent="var(--success)" />
+            <RankingCard title="Top inasistencias" rows={rankings?.topNoShow} accent="var(--text-muted)" />
+            <RankingCard title="Top recompensas" rows={rankings?.topRewards} accent="var(--brand)" />
           </div>
 
           {/* ---------- HOY ---------- */}
@@ -575,6 +611,40 @@ function FinanceCard({
   );
 }
 
+// Mini-lista compacta de un ranking de clientes (top 5). Ocupa poco espacio y,
+// si no hay filas, muestra un texto discreto "Sin datos aun".
+function RankingCard({
+  title,
+  rows,
+  accent,
+}: {
+  title: string;
+  rows?: { customer_id: string; name: string; count: number }[];
+  accent: string;
+}) {
+  const list = rows ?? [];
+  return (
+    <div style={{ ...card, ...styles.rankingCard }}>
+      <h3 style={{ ...styles.rankingTitle, color: accent }}>{title}</h3>
+      {list.length === 0 ? (
+        <div style={styles.rankingEmpty}>Sin datos aun</div>
+      ) : (
+        <ol style={styles.rankingList}>
+          {list.map((r, i) => (
+            <li key={r.customer_id || `${r.name}-${i}`} style={styles.rankingItem}>
+              <span style={styles.rankingRank}>{i + 1}.</span>
+              <span style={styles.rankingName} title={r.name}>
+                {r.name}
+              </span>
+              <span style={styles.rankingCount}>{r.count}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 function MetricCard({
   label,
   value,
@@ -686,4 +756,13 @@ const styles: Record<string, CSSProperties> = {
   financeFooter: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 700, color: "var(--text)", flexWrap: "wrap" },
   financeHint: { fontSize: 12, fontWeight: 500, color: "var(--text-muted)" },
   emptyBox: { padding: 18, color: "var(--text-muted)" },
+  rankingsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginTop: 14 },
+  rankingCard: { padding: 16, display: "flex", flexDirection: "column", gap: 10 },
+  rankingTitle: { fontSize: 13, fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: "0.03em" },
+  rankingEmpty: { fontSize: 13, color: "var(--text-muted)" },
+  rankingList: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 },
+  rankingItem: { display: "flex", alignItems: "center", gap: 8, fontSize: 13 },
+  rankingRank: { color: "var(--text-muted)", fontWeight: 700, minWidth: 18 },
+  rankingName: { color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  rankingCount: { color: "var(--text-muted)", fontWeight: 700, minWidth: 24, textAlign: "right" },
 };

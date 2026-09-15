@@ -7,13 +7,12 @@ import { WaitlistPanel } from "../components/WaitlistPanel";
 import { useAuthStore } from "../store/useAuthStore";
 import type { WaitlistEntry } from "../services/waitlist.service";
 import { trackEvent } from "../lib/firebase";
-import { dataService, type AppointmentPayload, type AppointmentNote, type MonthlyStat } from "../services/data.service";
-import BarChart, { type BarDatum } from "../components/charts/BarChart";
+import { dataService, type AppointmentPayload, type AppointmentNote, type Modality } from "../services/data.service";
 import { branchService } from "../services/branch.service";
 import { useBranchStore } from "../store/useBranchStore";
 import { usePremium } from "../store/usePremium";
 import type { Appointment, AppointmentStatus, Customer, PaymentStatus, Service } from "../types";
-import { card, pageTitle, btn, badge, field, emptyState, table, th, td } from "../ui/ui";
+import { card, pageTitle, btn, badge, field, emptyState } from "../ui/ui";
 
 const ALL_BRANCHES = "__all__";
 
@@ -50,8 +49,14 @@ interface FormState {
   service_id: string;
   start_time: string; // datetime-local
   notes: string;
-  modality: "in_person" | "online";
+  // Modalidad de la cita: presencial, en linea o a domicilio (Requirements 2.1).
+  modality: Modality;
   video_call_url: string;
+  // Telefono de contacto del cliente para la cita (obligatorio siempre, Requirement 3.1).
+  contact_phone: string;
+  // Domicilio + enlace de Google Maps: obligatorios cuando modality === 'home' (Requirement 2.2).
+  home_address: string;
+  maps_url: string;
 }
 
 const emptyForm: FormState = {
@@ -61,6 +66,9 @@ const emptyForm: FormState = {
   notes: "",
   modality: "in_person",
   video_call_url: "",
+  contact_phone: "",
+  home_address: "",
+  maps_url: "",
 };
 
 // Traduce codigos 409 del backend a mensajes claros y distintos entre si.
@@ -69,6 +77,11 @@ function mapBookingError(err: any, fallback: string): string {
   const code = err?.response?.data?.error?.code;
   if (code === "SLOT_TAKEN") return "Ese horario esta lleno (cupo alcanzado).";
   if (code === "DUPLICATE_BOOKING") return "Este cliente ya tiene una cita de esta categoria hoy.";
+  // Validaciones de contacto/domicilio y modalidad (Requirements 2.5, 3.3, 3.4).
+  if (code === "CONTACT_PHONE_REQUIRED") return "El telefono de contacto es obligatorio.";
+  if (code === "HOME_DETAILS_REQUIRED")
+    return "Para citas a domicilio, el domicilio y el enlace de Google Maps son obligatorios.";
+  if (code === "MODALITY_NOT_OFFERED") return "Tu negocio no ofrece esa modalidad de cita.";
   return readError(err, fallback);
 }
 
@@ -121,11 +134,6 @@ export default function Appointments() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
 
-  // --- Comportamiento por mes (solo premium) ---
-  const [stats, setStats] = useState<MonthlyStat[]>([]);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsError, setStatsError] = useState("");
-
   // Datos para el modal "Se liberó un espacio" (reasignacion tras cancelar).
   const [reassign, setReassign] = useState<{
     entry: WaitlistEntry;
@@ -142,10 +150,26 @@ export default function Appointments() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
+  // Mapa customer_id -> at_risk (tendencia a no asistir). Se resuelve en LOTE
+  // con un solo fetch de clientes (que ya trae at_risk por cliente) para pintar
+  // el badge de riesgo en el panel de citas sin incurrir en N+1.
+  const [atRiskMap, setAtRiskMap] = useState<Record<string, boolean>>({});
+
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Modalidades ofrecidas por el negocio (Requirements 2.1, 2.4). Determinan que
+  // opciones muestra el selector al agendar/reprogramar: con una sola modalidad el
+  // selector se oculta y se usa esa directamente. Default ["in_person"] hasta que
+  // carga (best-effort en openCreate/openManage).
+  const [availableModalities, setAvailableModalities] = useState<Modality[]>(["in_person"]);
+
+  // Buscador dentro del combo de servicios (Requirements 4.1-4.3): filtra por
+  // nombre en vivo tanto al crear como al reprogramar.
+  const [serviceQuery, setServiceQuery] = useState("");
+  const [rescheduleServiceQuery, setRescheduleServiceQuery] = useState("");
 
   // --- Detalles de la cita (al hacer clic en una tarjeta) ---
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -167,7 +191,7 @@ export default function Appointments() {
   const [manageServices, setManageServices] = useState<Service[]>([]);
   const [rescheduleStart, setRescheduleStart] = useState("");
   const [rescheduleService, setRescheduleService] = useState("");
-  const [rescheduleModality, setRescheduleModality] = useState<"in_person" | "online">("in_person");
+  const [rescheduleModality, setRescheduleModality] = useState<Modality>("in_person");
   const [manageVideoUrl, setManageVideoUrl] = useState("");
   const [phone, setPhone] = useState("");
   const [manageError, setManageError] = useState("");
@@ -206,28 +230,31 @@ export default function Appointments() {
       })
       .catch((err) => setError(readError(err, "Error al cargar citas")))
       .finally(() => setLoading(false));
+    // En paralelo (best-effort): resuelve el at_risk de los clientes en lote a
+    // partir del listado, que ya incluye ese flag por cliente. Solo alimenta el
+    // badge del panel; si falla no bloquea la vista de citas.
+    loadAtRisk();
+  };
+
+  // Construye el mapa customer_id -> at_risk con un solo fetch de clientes.
+  const loadAtRisk = () => {
+    dataService
+      .listCustomers()
+      .then((list) => {
+        const map: Record<string, boolean> = {};
+        for (const c of list) {
+          if (c.at_risk) map[c.id] = true;
+        }
+        setAtRiskMap(map);
+      })
+      .catch(() => {
+        /* best-effort: sin este mapa simplemente no se muestran badges de riesgo */
+      });
   };
 
   // Premium efectivo: preferimos el is_premium del endpoint (fuente autoritativa);
   // si aun no llega, usamos el store como aproximacion para el gating visual.
   const effectivePremium = apiPremium ?? isPremium;
-
-  // Carga las estadisticas mensuales (solo premium). Idempotente por render.
-  const loadStats = () => {
-    setStatsLoading(true);
-    setStatsError("");
-    dataService
-      .getMonthlyStats(6)
-      .then((data) => setStats(data))
-      .catch((err) => {
-        if (err?.response?.status === 403) {
-          setStatsError("Esta gráfica es solo para cuentas premium.");
-        } else {
-          setStatsError(readError(err, "No se pudieron cargar las estadísticas"));
-        }
-      })
-      .finally(() => setStatsLoading(false));
-  };
 
   // Descarga el reporte CSV (solo premium). Muestra estado de carga y errores.
   const handleDownloadReport = async () => {
@@ -245,14 +272,6 @@ export default function Appointments() {
       setReportLoading(false);
     }
   };
-
-  // Cuando confirmamos que el tenant es premium, cargamos las estadisticas una vez.
-  useEffect(() => {
-    if (effectivePremium && !statsLoading && stats.length === 0 && !statsError) {
-      loadStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectivePremium]);
 
   useEffect(() => {
     trackEvent("screen_view", { screen_name: "Reservaciones" });
@@ -294,30 +313,73 @@ export default function Appointments() {
   const todayKey = useMemo(() => localDayKey(new Date()), []);
 
   const groups = useMemo(() => {
-    // Limite inferior de Pasadas: hoy - 7 dias. Solo mostramos citas en [hoy-7d, hoy).
+    // Limite inferior del historial: hoy - 7 dias. Solo mostramos citas en [hoy-7d, ...).
+    // (Se conserva la ventana de gating premium existente; el backend recorta para free.)
     const limitDate = new Date();
     limitDate.setDate(limitDate.getDate() - 7);
     const limitKey = localDayKey(limitDate);
-    const today: Appointment[] = [];
-    const upcoming: Appointment[] = [];
-    const past: Appointment[] = [];
+
+    // Estados finales: una cita en estos estados va al historial aunque su fecha
+    // sea hoy o futura (ya no requiere atencion en la vista principal).
+    const isFinalStatus = (s: AppointmentStatus) =>
+      s === "COMPLETED" || s === "CANCELLED" || s === "NO_SHOW";
+
+    // Vista principal: citas ACTUALES (hoy) y PROXIMAS (futuras) en estados activos.
+    const today: Appointment[] = []; // activas de hoy
+    const upcoming: Appointment[] = []; // activas futuras
+    // Historial discreto: finalizadas (COMPLETED/CANCELLED/NO_SHOW) o cuya fecha ya paso.
+    const history: Appointment[] = [];
+
     for (const a of filtered) {
       const key = localDayKey(a.start_time);
+      const final = isFinalStatus(a.status);
+      // Sin fecha valida: la tratamos como proxima activa (o historial si esta finalizada).
       if (!key) {
-        upcoming.push(a);
+        if (final) history.push(a);
+        else upcoming.push(a);
         continue;
       }
-      if (key === todayKey) today.push(a);
-      else if (key > todayKey) upcoming.push(a);
-      else if (key >= limitKey) past.push(a); // solo ultimos 7 dias
+      if (key < todayKey) {
+        // Pasada: solo dentro de la ventana [hoy-7d, hoy).
+        if (key >= limitKey) history.push(a);
+        continue;
+      }
+      // Hoy o futura: si esta finalizada va al historial; si no, a la vista principal.
+      if (final) history.push(a);
+      else if (key === todayKey) today.push(a);
+      else upcoming.push(a);
     }
-    const asc = (x: Appointment, y: Appointment) =>
-      new Date(x.start_time).getTime() - new Date(y.start_time).getTime();
+
+    // Orden primario: por hora (lo inmediato primero). Criterio SECUNDARIO
+    // (desempate): mayor precio del servicio primero, para que las citas de
+    // mejor ganancia queden arriba SIN romper el agrupamiento hoy/proximas.
+    const asc = (x: Appointment, y: Appointment) => {
+      const byTime = new Date(x.start_time).getTime() - new Date(y.start_time).getTime();
+      if (byTime !== 0) return byTime;
+      return apptPrice(y) - apptPrice(x);
+    };
     today.sort(asc);
     upcoming.sort(asc);
-    past.sort((x, y) => -asc(x, y));
-    return { today, upcoming, past };
+    // Historial: lo mas reciente primero.
+    history.sort((x, y) => -asc(x, y));
+    return { today, upcoming, history };
   }, [filtered, todayKey]);
+
+  // Conjunto de citas de "mejor precio": las que superan el precio promedio del
+  // servicio dentro de la vista principal (hoy + proximas). Solo se consideran
+  // citas con precio disponible (a.service?.price). Se usa para el realce visual
+  // (badge ⭐) sin alterar el orden ni el agrupamiento. Si no hay precios, queda vacio.
+  const bestPriceIds = useMemo(() => {
+    const main = [...groups.today, ...groups.upcoming];
+    const priced = main.filter((a) => apptPrice(a) > 0);
+    if (priced.length < 2) return new Set<string>();
+    const avg = priced.reduce((acc, a) => acc + apptPrice(a), 0) / priced.length;
+    const ids = new Set<string>();
+    for (const a of priced) {
+      if (apptPrice(a) > avg) ids.add(a.id);
+    }
+    return ids;
+  }, [groups]);
 
   // Sucursal destino al agendar: la seleccionada en el filtro (si no es "Todas"),
   // o la primera sucursal disponible como fallback.
@@ -368,9 +430,25 @@ export default function Appointments() {
     return { capacity, slots, serviceName: service.name };
   }, [form.service_id, form.start_time, services, appointments, targetBranchId]);
 
+  // Servicios filtrados por el buscador del combo (crear). Case-insensitive por
+  // nombre; sin texto muestra todos (Requirements 4.1-4.3).
+  const filteredServices = useMemo(() => {
+    const q = serviceQuery.trim().toLowerCase();
+    if (!q) return services;
+    return services.filter((s) => s.name.toLowerCase().includes(q));
+  }, [services, serviceQuery]);
+
+  // Servicios filtrados por el buscador del combo (reprogramar).
+  const filteredManageServices = useMemo(() => {
+    const q = rescheduleServiceQuery.trim().toLowerCase();
+    if (!q) return manageServices;
+    return manageServices.filter((s) => s.name.toLowerCase().includes(q));
+  }, [manageServices, rescheduleServiceQuery]);
+
   const openCreate = async () => {
     setForm(emptyForm);
     setFormError("");
+    setServiceQuery("");
     setModalOpen(true);
     try {
       // Categorias de la sucursal destino; si no hay sucursal, usa las del tenant.
@@ -383,6 +461,22 @@ export default function Appointments() {
     } catch (err) {
       setFormError(readError(err, "No se pudieron cargar clientes/servicios"));
     }
+    // Modalidades ofrecidas por el negocio (Requirements 2.1, 2.4): best-effort.
+    // Se leen de offered_modalities; si ofrece una sola, se preselecciona en el
+    // formulario y el selector se oculta.
+    try {
+      const settings = await dataService.getBusinessSettings();
+      const offered =
+        Array.isArray(settings.offered_modalities) && settings.offered_modalities.length > 0
+          ? settings.offered_modalities
+          : (["in_person"] as Modality[]);
+      setAvailableModalities(offered);
+      if (offered.length === 1) {
+        setForm((prev) => ({ ...prev, modality: offered[0] }));
+      }
+    } catch {
+      /* best-effort: si falla, se muestran las modalidades por defecto */
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -390,6 +484,25 @@ export default function Appointments() {
     if (!form.customer_id || !form.service_id || !form.start_time) {
       setFormError("Cliente, servicio y fecha/hora son obligatorios.");
       return;
+    }
+    // Telefono de contacto obligatorio siempre (Requirement 3.1).
+    const contactPhone = form.contact_phone.trim();
+    if (!contactPhone) {
+      setFormError("El telefono de contacto es obligatorio.");
+      return;
+    }
+    // A domicilio: domicilio + URL de Google Maps obligatorios (Requirement 2.2).
+    const homeAddress = form.home_address.trim();
+    const mapsUrl = form.maps_url.trim();
+    if (form.modality === "home") {
+      if (!homeAddress || !mapsUrl) {
+        setFormError("Para citas a domicilio, el domicilio y el enlace de Google Maps son obligatorios.");
+        return;
+      }
+      if (!/^https?:\/\//i.test(mapsUrl)) {
+        setFormError("El enlace de Google Maps debe empezar con http:// o https://.");
+        return;
+      }
     }
     setSaving(true);
     setFormError("");
@@ -400,8 +513,12 @@ export default function Appointments() {
       notes: form.notes.trim() || undefined,
       branch_id: targetBranchId || undefined,
       modality: form.modality,
-      // Online: envia la URL (o undefined si vacia para no tocar). Presencial: "" limpia.
+      // Online: envia la URL (o undefined si vacia para no tocar). Presencial/home: "" limpia.
       video_call_url: form.modality === "online" ? form.video_call_url.trim() || undefined : "",
+      // Telefono de contacto (obligatorio) y datos de domicilio solo si es a domicilio.
+      contact_phone: contactPhone,
+      home_address: form.modality === "home" ? homeAddress : undefined,
+      maps_url: form.modality === "home" ? mapsUrl : undefined,
     };
     try {
       await dataService.createAppointment(payload);
@@ -465,7 +582,8 @@ export default function Appointments() {
     setShowPhoneEdit(false);
     setRescheduleStart(toLocalInput(a.start_time));
     setRescheduleService(a.service_id);
-    setRescheduleModality(a.modality === "online" ? "online" : "in_person");
+    setRescheduleServiceQuery("");
+    setRescheduleModality(a.modality === "online" ? "online" : a.modality === "home" ? "home" : "in_person");
     setManageVideoUrl(a.video_call_url ?? "");
     setPhone(a.customer?.phone && a.customer.phone !== "sin-telefono" ? a.customer.phone : "");
     setManageServices([]);
@@ -482,6 +600,21 @@ export default function Appointments() {
       setManageServices(list);
     } catch {
       /* si falla, el select de servicio mostrara solo el actual */
+    }
+    // Modalidades ofrecidas por el negocio (Requirements 2.1, 2.4): best-effort.
+    // Si ofrece una sola, se fija esa y el selector se oculta al reprogramar.
+    try {
+      const settings = await dataService.getBusinessSettings();
+      const offered =
+        Array.isArray(settings.offered_modalities) && settings.offered_modalities.length > 0
+          ? settings.offered_modalities
+          : (["in_person"] as Modality[]);
+      setAvailableModalities(offered);
+      if (offered.length === 1) {
+        setRescheduleModality(offered[0]);
+      }
+    } catch {
+      /* best-effort: si falla, se muestran las modalidades por defecto */
     }
   };
 
@@ -692,11 +825,29 @@ export default function Appointments() {
       <div style={styles.cardTime}>{formatTimeOrDate(a.start_time)}</div>
       <div style={styles.cardCustomer}>{a.customer_name || a.customer?.name || a.customer_id}</div>
       <div style={styles.cardService}>{a.service_name || a.service?.name || a.service_id}</div>
+      {/* Precio del servicio (si esta disponible en el objeto anidado). Se
+          destaca cuando la cita esta entre las de "mejor precio" del dia. */}
+      {apptPrice(a) > 0 && (
+        <div style={{ ...styles.cardPrice, ...(bestPriceIds.has(a.id) ? styles.cardPriceBest : null) }}>
+          {bestPriceIds.has(a.id) && <span aria-hidden>⭐ </span>}
+          {formatPrice(apptPrice(a))}
+        </div>
+      )}
       {branchName(a.branch_id) && <div style={styles.cardBranch}>🏢 {branchName(a.branch_id)}</div>}
       <div style={styles.cardBadges}>
         <span style={badge(STATUS_BADGE[a.status])}>{STATUS_LABELS[a.status]}</span>
+        {bestPriceIds.has(a.id) && (
+          <span style={badge("success")} title="Cita de mejor precio (por encima del promedio)">
+            ⭐ Mejor precio
+          </span>
+        )}
         {a.payment_status && (
           <span style={badge(PAYMENT_BADGE[a.payment_status])}>{PAYMENT_LABELS[a.payment_status]}</span>
+        )}
+        {atRiskMap[a.customer_id] && (
+          <span style={badge("warning")} title="Este cliente tiende a no asistir">
+            ⚠ Riesgo inasistencia
+          </span>
         )}
       </div>
     </button>
@@ -797,7 +948,8 @@ export default function Appointments() {
         </div>
       )}
 
-      {/* Herramientas premium: reporte CSV + comportamiento por mes. */}
+      {/* Herramientas premium: reporte CSV. La grafica "Comportamiento por mes"
+          se retiro del panel de citas (permanece en el Dashboard). */}
       {effectivePremium && (
         <div style={styles.premiumTools}>
           <div style={styles.reportRow}>
@@ -815,50 +967,6 @@ export default function Appointments() {
               </span>
             )}
           </div>
-
-          <section style={{ ...card, padding: 16 }} aria-labelledby="stats-title">
-            <h2 id="stats-title" style={styles.statsTitle}>
-              Comportamiento por mes
-            </h2>
-            {statsLoading ? (
-              <div style={styles.loading} role="status" aria-live="polite">
-                <Spinner /> Cargando estadísticas...
-              </div>
-            ) : statsError ? (
-              <div role="alert">
-                <p style={{ color: "var(--danger)", marginBottom: 12 }}>{statsError}</p>
-                <button type="button" style={btn("secondary")} onClick={loadStats}>
-                  Reintentar
-                </button>
-              </div>
-            ) : stats.length === 0 ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>
-                Aún no hay datos suficientes para mostrar la gráfica.
-              </p>
-            ) : (
-              <>
-                <BarChart data={statsToBars(stats)} orientation="vertical" height={240} />
-                <table style={{ ...table, marginTop: 16 }}>
-                  <thead>
-                    <tr>
-                      <th style={th}>Mes</th>
-                      <th style={th}>Total</th>
-                      <th style={th}>Ingresos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.map((s) => (
-                      <tr key={s.month}>
-                        <td style={td}>{formatMonth(s.month)}</td>
-                        <td style={td}>{s.total}</td>
-                        <td style={td}>${Number(s.income ?? 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-          </section>
         </div>
       )}
 
@@ -884,17 +992,18 @@ export default function Appointments() {
       )}
 
       {!loading && !error && filtered.length > 0 && (
-        <div style={styles.board}>
-          <ApptSection
-            title="Hoy"
-            icon="📌"
-            tone="info"
-            items={groups.today}
-            emptyNote="No tienes citas para hoy."
-            renderItem={renderCard}
-          />
-          {isPremium ? (
-            <>
+        <>
+          {/* Vista principal (destacada): citas ACTUALES (hoy) y PROXIMAS activas. */}
+          <div style={styles.board}>
+            <ApptSection
+              title="Hoy"
+              icon="📌"
+              tone="info"
+              items={groups.today}
+              emptyNote="No tienes citas activas para hoy."
+              renderItem={renderCard}
+            />
+            {isPremium ? (
               <ApptSection
                 title="Proximas"
                 icon="🔜"
@@ -903,35 +1012,38 @@ export default function Appointments() {
                 emptyNote="No hay citas proximas."
                 renderItem={renderCard}
               />
-              <ApptSection
-                title="Pasadas"
-                icon="🕓"
-                tone="muted"
-                items={groups.past}
-                emptyNote="Sin citas pasadas."
-                renderItem={renderCard}
-              />
-            </>
+            ) : (
+              // Free: ocultamos Proximas y mostramos una tarjeta discreta.
+              <section style={styles.column}>
+                <div style={styles.columnHeader}>
+                  <h2 style={styles.sectionH2}>
+                    <span aria-hidden>🔒</span> Proximas
+                  </h2>
+                  <span style={badge("warning")}>Solo premium</span>
+                </div>
+                <div style={{ ...card, ...styles.premiumLockCard }}>
+                  <p style={{ margin: 0, fontWeight: 600, color: "var(--text)" }}>
+                    Ver proximas es solo para premium
+                  </p>
+                  <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 14 }}>
+                    Con premium veras tu agenda completa. Por ahora, aqui estan tus citas de hoy.
+                  </p>
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Historial discreto (subordinado): citas finalizadas o pasadas.
+              Colapsable y con estilo muted para no robar la atencion principal. */}
+          {isPremium ? (
+            <HistorySection items={groups.history} renderItem={renderCard} />
           ) : (
-            // Free: ocultamos Proximas/Pasadas y mostramos una tarjeta discreta.
-            <section style={styles.column}>
-              <div style={styles.columnHeader}>
-                <h2 style={styles.sectionH2}>
-                  <span aria-hidden>🔒</span> Proximas y pasadas
-                </h2>
-                <span style={badge("warning")}>Solo premium</span>
-              </div>
-              <div style={{ ...card, ...styles.premiumLockCard }}>
-                <p style={{ margin: 0, fontWeight: 600, color: "var(--text)" }}>
-                  Ver proximas y pasadas es solo para premium
-                </p>
-                <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 14 }}>
-                  Con premium veras tu agenda completa. Por ahora, aqui estan tus citas de hoy.
-                </p>
-              </div>
-            </section>
+            <div style={styles.historyLockRow}>
+              <span aria-hidden style={{ fontSize: 14 }}>🔒</span>
+              <span>El historial de citas finalizadas y pasadas es solo para premium.</span>
+            </div>
           )}
-        </div>
+        </>
       )}
 
       <Modal open={modalOpen} title="Agendar cita" onClose={() => setModalOpen(false)}>
@@ -956,6 +1068,16 @@ export default function Appointments() {
 
           <div style={field}>
             <label htmlFor="appt-service">Servicio *</label>
+            {/* Buscador del combo de servicios: filtra por nombre en vivo (Requirements 4.1-4.3). */}
+            <input
+              id="appt-service-search"
+              type="text"
+              placeholder="Buscar servicio por nombre..."
+              value={serviceQuery}
+              onChange={(e) => setServiceQuery(e.target.value)}
+              style={{ marginBottom: 8 }}
+              aria-label="Buscar servicio"
+            />
             <select
               id="appt-service"
               value={form.service_id}
@@ -963,12 +1085,17 @@ export default function Appointments() {
               required
             >
               <option value="">Selecciona un servicio</option>
-              {services.map((s) => (
+              {filteredServices.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} ({s.duration_mins} min - ${s.price})
                 </option>
               ))}
             </select>
+            {serviceQuery.trim() && filteredServices.length === 0 && (
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 0" }}>
+                No hay servicios que coincidan con la búsqueda.
+              </p>
+            )}
           </div>
 
           <div style={field}>
@@ -985,6 +1112,7 @@ export default function Appointments() {
           <ModalitySelector
             value={form.modality}
             onChange={(m) => setForm({ ...form, modality: m })}
+            available={availableModalities}
           />
 
           {form.modality === "online" && (
@@ -998,6 +1126,47 @@ export default function Appointments() {
                 onChange={(e) => setForm({ ...form, video_call_url: e.target.value })}
               />
             </div>
+          )}
+
+          {/* Telefono de contacto: obligatorio siempre (Requirement 3.1). */}
+          <div style={field}>
+            <label htmlFor="appt-contact-phone">Teléfono de contacto *</label>
+            <input
+              id="appt-contact-phone"
+              type="tel"
+              placeholder="+52 55 1234 5678"
+              value={form.contact_phone}
+              onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
+              required
+            />
+          </div>
+
+          {/* A domicilio: domicilio + enlace de Google Maps obligatorios (Requirement 2.2). */}
+          {form.modality === "home" && (
+            <>
+              <div style={field}>
+                <label htmlFor="appt-home-address">Domicilio *</label>
+                <input
+                  id="appt-home-address"
+                  type="text"
+                  placeholder="Calle, número, colonia, referencias..."
+                  value={form.home_address}
+                  onChange={(e) => setForm({ ...form, home_address: e.target.value })}
+                  required
+                />
+              </div>
+              <div style={field}>
+                <label htmlFor="appt-maps-url">Enlace de Google Maps *</label>
+                <input
+                  id="appt-maps-url"
+                  type="url"
+                  placeholder="https://maps.google.com/..."
+                  value={form.maps_url}
+                  onChange={(e) => setForm({ ...form, maps_url: e.target.value })}
+                  required
+                />
+              </div>
+            </>
           )}
 
           {occupancy && <OccupancyPanel occupancy={occupancy} />}
@@ -1077,7 +1246,13 @@ export default function Appointments() {
               </div>
               <div style={styles.detailRow}>
                 <dt style={styles.detailKey}>Modalidad</dt>
-                <dd style={styles.detailVal}>{detailsAppt.modality === "online" ? "En linea" : "Presencial"}</dd>
+                <dd style={styles.detailVal}>
+                  {detailsAppt.modality === "online"
+                    ? "En línea"
+                    : detailsAppt.modality === "home"
+                    ? "A domicilio"
+                    : "Presencial"}
+                </dd>
               </div>
               {detailsAppt.video_call_url && (
                 <div style={styles.detailRow}>
@@ -1408,22 +1583,40 @@ export default function Appointments() {
               </div>
               <div style={field}>
                 <label htmlFor="reschedule-service">Servicio</label>
+                {/* Buscador del combo de servicios al reprogramar (Requirements 4.1-4.3). */}
+                {manageServices.length > 0 && (
+                  <input
+                    id="reschedule-service-search"
+                    type="text"
+                    placeholder="Buscar servicio por nombre..."
+                    value={rescheduleServiceQuery}
+                    onChange={(e) => setRescheduleServiceQuery(e.target.value)}
+                    style={{ marginBottom: 8 }}
+                    aria-label="Buscar servicio"
+                  />
+                )}
                 <select id="reschedule-service" value={rescheduleService} onChange={(e) => setRescheduleService(e.target.value)}>
                   {manageServices.length === 0 && (
                     <option value={manageAppt.service_id}>
                       {manageAppt.service_name || manageAppt.service?.name || "Servicio actual"}
                     </option>
                   )}
-                  {manageServices.map((s) => (
+                  {filteredManageServices.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.duration_mins} min - ${s.price})
                     </option>
                   ))}
                 </select>
+                {rescheduleServiceQuery.trim() && manageServices.length > 0 && filteredManageServices.length === 0 && (
+                  <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 0" }}>
+                    No hay servicios que coincidan con la búsqueda.
+                  </p>
+                )}
               </div>
               <ModalitySelector
                 value={rescheduleModality}
                 onChange={setRescheduleModality}
+                available={availableModalities}
               />
               {rescheduleModality === "online" && (
                 <div style={field}>
@@ -1502,6 +1695,47 @@ function ApptSection({
   );
 }
 
+// Historial discreto: seccion secundaria, subordinada visualmente (titulo pequeno,
+// estilo muted, colapsable). Reune citas finalizadas (COMPLETED/CANCELLED/NO_SHOW)
+// o cuya fecha ya paso, sin robar la atencion a la vista principal.
+function HistorySection({
+  items,
+  renderItem,
+}: {
+  items: Appointment[];
+  renderItem: (a: Appointment) => ReactElement;
+}) {
+  // Colapsado por defecto para mantener el foco en actuales/proximas.
+  const [open, setOpen] = useState(false);
+  return (
+    <section style={styles.historySection} aria-labelledby="history-title">
+      <button
+        type="button"
+        style={styles.historyToggle}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="history-panel"
+      >
+        <span aria-hidden style={{ fontSize: 13 }}>{open ? "▾" : "▸"}</span>
+        <span aria-hidden style={{ fontSize: 13 }}>🕓</span>
+        <h3 id="history-title" style={styles.historyH3}>
+          Historial
+        </h3>
+        <span style={styles.historyCount}>{items.length}</span>
+      </button>
+      {open && (
+        <div id="history-panel" style={styles.historyPanel}>
+          {items.length === 0 ? (
+            <p style={styles.historyEmpty}>Sin citas en el historial.</p>
+          ) : (
+            <div style={styles.historyGrid}>{items.map(renderItem)}</div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // Panel de ocupacion del dia: color + TEXTO para accesibilidad (no solo color).
 function OccupancyPanel({
   occupancy,
@@ -1548,34 +1782,45 @@ function OccupancyPanel({
   );
 }
 
-// Selector segmentado Presencial / En linea.
-// Sin gating: ambas opciones estan siempre disponibles.
+// Etiquetas legibles de cada modalidad de cita.
+const MODALITY_LABELS: Record<Modality, string> = {
+  in_person: "Presencial",
+  online: "En línea",
+  home: "A domicilio",
+};
+
+// Selector segmentado de modalidad (Presencial / En línea / A domicilio). Muestra
+// solo las modalidades ofrecidas por el negocio (Requirements 2.1, 2.4): si ofrece
+// una sola, el selector no se muestra (el llamador ya fija esa modalidad).
 function ModalitySelector({
   value,
   onChange,
+  available,
 }: {
-  value: "in_person" | "online";
-  onChange: (m: "in_person" | "online") => void;
+  value: Modality;
+  onChange: (m: Modality) => void;
+  available: Modality[];
 }) {
-  const options: { key: "in_person" | "online"; label: string }[] = [
-    { key: "in_person", label: "Presencial" },
-    { key: "online", label: "En linea" },
-  ];
+  // Con una sola modalidad ofrecida no hay eleccion: se oculta el selector.
+  if (available.length <= 1) return null;
+  // Orden estable de las opciones (presencial, en linea, a domicilio).
+  const order: Modality[] = ["in_person", "online", "home"];
+  const options = order.filter((m) => available.includes(m));
   return (
     <div style={field}>
       <label>Modalidad</label>
       <div style={styles.segment} role="group" aria-label="Modalidad de la cita">
-        {options.map((opt) => {
-          const active = value === opt.key;
+        {options.map((key) => {
+          const active = value === key;
           return (
             <button
-              key={opt.key}
+              key={key}
               type="button"
               aria-pressed={active}
-              onClick={() => onChange(opt.key)}
+              onClick={() => onChange(key)}
               style={{ ...styles.segmentBtn, ...(active ? styles.segmentBtnActive : null) }}
             >
-              {opt.label}
+              {MODALITY_LABELS[key]}
             </button>
           );
         })}
@@ -1591,6 +1836,19 @@ function formatBookedBy(a: Appointment): string {
   if (name) return `Agendo: ${name}`;
   if (email) return `Agendo: ${email}`;
   return "Agendada por el negocio";
+}
+
+// Precio del servicio asociado a la cita. Se lee del objeto anidado
+// (a.service?.price) que el backend incluye en los listados. Si no esta
+// disponible devuelve 0 (no rompe: la UI simplemente no muestra realce/precio).
+function apptPrice(a: Appointment): number {
+  const p = a.service?.price;
+  return typeof p === "number" && Number.isFinite(p) ? p : 0;
+}
+
+// Formatea un precio para la tarjeta de cita.
+function formatPrice(price: number): string {
+  return `$${price.toFixed(2)}`;
 }
 
 // En columnas: muestra solo la hora para HOY, y fecha corta + hora para el resto.
@@ -1626,20 +1884,6 @@ function readError(err: any, fallback: string): string {
   return err?.response?.data?.error?.message || err?.message || fallback;
 }
 
-// Convierte 'YYYY-MM' a una etiqueta corta legible en espanol (p. ej. "ene 2025").
-function formatMonth(month: string): string {
-  const [y, m] = month.split("-").map(Number);
-  if (!y || !m) return month;
-  const d = new Date(y, m - 1, 1);
-  if (isNaN(d.getTime())) return month;
-  return d.toLocaleDateString("es-ES", { month: "short", year: "numeric" });
-}
-
-// Mapea las estadisticas mensuales a barras (total de citas por mes) para BarChart.
-function statsToBars(stats: MonthlyStat[]): BarDatum[] {
-  return stats.map((s) => ({ label: formatMonth(s.month), value: s.total }));
-}
-
 const styles: Record<string, CSSProperties> = {
   headerRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 },
   filterRow: { display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 20, flexWrap: "wrap" },
@@ -1661,7 +1905,6 @@ const styles: Record<string, CSSProperties> = {
   },
   premiumTools: { display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 },
   reportRow: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" },
-  statsTitle: { fontSize: 16, fontWeight: 700, color: "var(--text)", margin: "0 0 12px" },
   // Tablero de 3 columnas (Hoy | Proximas | Pasadas). En pantallas chicas se apila.
   board: {
     display: "grid",
@@ -1703,6 +1946,8 @@ const styles: Record<string, CSSProperties> = {
   cardTime: { fontSize: 13, fontWeight: 700, color: "var(--brand)" },
   cardCustomer: { fontSize: 15, fontWeight: 700, color: "var(--text)" },
   cardService: { fontSize: 13, color: "var(--text-muted)" },
+  cardPrice: { fontSize: 14, fontWeight: 700, color: "var(--text)" },
+  cardPriceBest: { color: "var(--success)" },
   cardBranch: { fontSize: 12, color: "var(--text-muted)", fontWeight: 600 },
   cardBadges: { display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" },
   // Modal de detalles.
@@ -1734,6 +1979,27 @@ const styles: Record<string, CSSProperties> = {
   sectionH2: { fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0, display: "flex", alignItems: "center", gap: 8 },
   sectionEmpty: { fontSize: 14, color: "var(--text-muted)", fontStyle: "italic", margin: 0, padding: "4px 2px" },
   premiumLockCard: { padding: 16, background: "var(--surface-hover)" },
+  // Historial discreto: subordinado visualmente (sin card prominente, opacidad reducida).
+  historySection: { marginTop: 28, opacity: 0.85 },
+  historyToggle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    padding: "8px 4px",
+    background: "transparent",
+    border: "none",
+    borderTop: "1px solid var(--border)",
+    cursor: "pointer",
+    textAlign: "left",
+    color: "var(--text-muted)",
+  },
+  historyH3: { fontSize: 13, fontWeight: 700, color: "var(--text-muted)", margin: 0, textTransform: "uppercase", letterSpacing: "0.04em" },
+  historyCount: { fontSize: 12, fontWeight: 600, color: "var(--text-muted)", background: "var(--surface-hover)", borderRadius: 999, padding: "1px 8px" },
+  historyPanel: { marginTop: 12 },
+  historyGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 },
+  historyEmpty: { fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", margin: "4px 2px" },
+  historyLockRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 28, padding: "8px 4px", borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-muted)" },
   occPanel: { ...card, padding: 14, marginBottom: 14, background: "var(--surface-hover)" },
   occTitle: { fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 10 },
   occGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8 },

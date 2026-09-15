@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Modal } from "../components/Modal";
 import Spinner from "../components/Spinner";
-import { dataService, type CustomerPayload } from "../services/data.service";
+import { dataService, type CustomerPayload, type CustomerBehavior } from "../services/data.service";
 import {
   cancellationPolicyService,
   type CustomerCancellationState,
@@ -39,6 +39,8 @@ export default function Customers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  // Termino de busqueda con debounce (~300ms) para no saturar el backend mientras se escribe.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -58,30 +60,36 @@ export default function Customers() {
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [paymentMsg, setPaymentMsg] = useState("");
 
-  const load = () => {
+  // Comportamiento del cliente en edicion (asistio/cancelo/no asistio + at_risk).
+  const [behavior, setBehavior] = useState<CustomerBehavior | null>(null);
+  const [behaviorLoading, setBehaviorLoading] = useState(false);
+  const [behaviorError, setBehaviorError] = useState("");
+  // Bloqueo/desbloqueo del cliente (accion de ADMIN).
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState("");
+
+  // Carga el listado consultando al backend con el termino de busqueda (name/email/phone, contains).
+  const load = (term: string = debouncedSearch) => {
     setLoading(true);
     setError("");
     dataService
-      .listCustomers()
+      .listCustomers(term.trim() || undefined)
       .then((data) => setCustomers(data))
       .catch((err) => setError(readError(err, "Error al cargar clientes")))
       .finally(() => setLoading(false));
   };
 
+  // Debounce: espera ~300ms tras el ultimo tecleo antes de fijar el termino que dispara la carga.
   useEffect(() => {
-    load();
-  }, []);
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.email || "").toLowerCase().includes(q) ||
-        c.phone.toLowerCase().includes(q)
-    );
-  }, [customers, search]);
+  // Recarga desde el backend cuando cambia el termino con debounce.
+  useEffect(() => {
+    load(debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   const openCreate = () => {
     setEditing(null);
@@ -102,12 +110,46 @@ export default function Customers() {
       .finally(() => setCancelStateLoading(false));
   };
 
+  const loadBehavior = (customerId: string) => {
+    setBehavior(null);
+    setBehaviorError("");
+    setStatusError("");
+    setBehaviorLoading(true);
+    dataService
+      .getCustomerBehavior(customerId)
+      .then(setBehavior)
+      .catch((err) => setBehaviorError(readError(err, "No se pudo cargar el comportamiento")))
+      .finally(() => setBehaviorLoading(false));
+  };
+
   const openEdit = (c: Customer) => {
     setEditing(c);
     setForm({ name: c.name, phone: c.phone, email: c.email || "", notes: c.notes || "" });
     setFormError("");
     setModalOpen(true);
     loadCancelState(c.id);
+    loadBehavior(c.id);
+  };
+
+  const handleToggleStatus = async () => {
+    if (!editing) return;
+    const isBlocked = editing.status === "blocked";
+    const next: "active" | "blocked" = isBlocked ? "active" : "blocked";
+    const confirmMsg = isBlocked
+      ? `¿Desbloquear al cliente "${editing.name}"? Podra volver a reservar.`
+      : `¿Bloquear al cliente "${editing.name}"? No podra crear nuevas citas.`;
+    if (!window.confirm(confirmMsg)) return;
+    setStatusSaving(true);
+    setStatusError("");
+    try {
+      const updated = await dataService.setCustomerStatus(editing.id, next);
+      setEditing(updated);
+      load();
+    } catch (err) {
+      setStatusError(readError(err, "No se pudo actualizar el estado del cliente"));
+    } finally {
+      setStatusSaving(false);
+    }
   };
 
   const handleConfirmPayment = async () => {
@@ -182,8 +224,8 @@ export default function Customers() {
       <input
         style={styles.search}
         type="search"
-        placeholder="Buscar por nombre, email o telefono"
-        aria-label="Buscar clientes por nombre, email o telefono"
+        placeholder="Buscar por nombre o correo"
+        aria-label="Buscar clientes por nombre o correo"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -196,20 +238,20 @@ export default function Customers() {
       {error && (
         <div role="alert" aria-live="assertive">
           <p style={{ color: "var(--danger)", marginBottom: 12 }}>{error}</p>
-          <button onClick={load} style={btn("secondary")}>
+          <button onClick={() => load()} style={btn("secondary")}>
             Reintentar
           </button>
         </div>
       )}
-      {!loading && !error && filtered.length === 0 && (
+      {!loading && !error && customers.length === 0 && (
         <div style={emptyState}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>👥</div>
           <p style={{ fontWeight: 600, color: "var(--text)" }}>Sin clientes</p>
-          <p>{search ? "No hay coincidencias con tu busqueda." : "Agrega tu primer cliente."}</p>
+          <p>{debouncedSearch.trim() ? "No hay coincidencias con tu busqueda." : "Agrega tu primer cliente."}</p>
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {!loading && !error && customers.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <table style={table}>
             <thead>
@@ -221,10 +263,16 @@ export default function Customers() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {customers.map((c) => (
                 <tr key={c.id}>
                   <td style={td}>
                     <div style={{ fontWeight: 600 }}>{c.name}</div>
+                    {(c.status === "blocked" || c.at_risk) && (
+                      <div style={styles.nameBadges}>
+                        {c.status === "blocked" && <span style={badge("danger")}>Bloqueado</span>}
+                        {c.at_risk && <span style={badge("warning")}>Riesgo inasistencia</span>}
+                      </div>
+                    )}
                     {c.notes && <div style={styles.notes}>{c.notes}</div>}
                   </td>
                   <td style={td}>{c.phone}</td>
@@ -344,6 +392,77 @@ export default function Customers() {
             </div>
           )}
 
+          {/* Comportamiento del cliente (solo al editar): asistio/cancelo/no asistio + bloqueo. */}
+          {editing && (
+            <div style={styles.debtBox}>
+              <div style={{ ...styles.debtTitle, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span>Comportamiento</span>
+                {editing.status === "blocked" && <span style={badge("danger")}>Bloqueado</span>}
+              </div>
+              {behaviorLoading ? (
+                <p style={{ color: "var(--text-muted)", fontSize: 14 }} role="status" aria-live="polite">
+                  Cargando comportamiento...
+                </p>
+              ) : behaviorError ? (
+                <p style={{ color: "var(--danger)", fontSize: 14 }} role="alert">
+                  {behaviorError}
+                </p>
+              ) : behavior ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={styles.behaviorRow}>
+                    <div style={styles.behaviorStat}>
+                      <span style={styles.behaviorNum}>{behavior.attended}</span>
+                      <span style={styles.behaviorLabel}>Asistió</span>
+                    </div>
+                    <div style={styles.behaviorStat}>
+                      <span style={styles.behaviorNum}>{behavior.cancelled}</span>
+                      <span style={styles.behaviorLabel}>Canceló</span>
+                    </div>
+                    <div style={styles.behaviorStat}>
+                      <span style={styles.behaviorNum}>{behavior.no_show}</span>
+                      <span style={styles.behaviorLabel}>No asistió</span>
+                    </div>
+                  </div>
+                  {behavior.at_risk && (
+                    <div>
+                      <span style={badge("warning")}>Riesgo de inasistencia</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {statusError && (
+                <p style={{ color: "var(--danger)", fontSize: 14, marginTop: 10, marginBottom: 0 }} role="alert">
+                  {statusError}
+                </p>
+              )}
+
+              {isAdmin && (
+                <div style={{ marginTop: 12 }}>
+                  {editing.status === "blocked" ? (
+                    <button
+                      type="button"
+                      style={smallBtn("secondary")}
+                      onClick={handleToggleStatus}
+                      disabled={statusSaving}
+                    >
+                      {statusSaving ? "Guardando..." : "Desbloquear"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      style={smallBtn("danger")}
+                      onClick={handleToggleStatus}
+                      disabled={statusSaving}
+                    >
+                      {statusSaving ? "Guardando..." : "Bloquear cliente"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={styles.formActions}>
             <button type="button" style={btn("secondary")} onClick={() => setModalOpen(false)}>
               Cancelar
@@ -377,6 +496,21 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 14,
   },
   debtTitle: { fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 10 },
+  behaviorRow: { display: "flex", gap: 8, flexWrap: "wrap" },
+  behaviorStat: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 2,
+    minWidth: 64,
+    padding: "8px 10px",
+    borderRadius: "var(--radius-sm)",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+  },
+  behaviorNum: { fontSize: 18, fontWeight: 700, color: "var(--text)" },
+  behaviorLabel: { fontSize: 12, color: "var(--text-muted)" },
+  nameBadges: { display: "inline-flex", gap: 6, flexWrap: "wrap", marginTop: 4 },
   headerRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 },
   search: { marginBottom: 20 },
   loading: { display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)" },

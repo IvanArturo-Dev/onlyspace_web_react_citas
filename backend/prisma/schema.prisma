@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -78,6 +79,11 @@ model Tenant {
   banner_text             String?   @db.Text
   banner_link             String?
   booking_horizon_days    Int       @default(30) // cuantos dias hacia adelante puede reservar un cliente (<=0 = sin limite)
+  offered_modality        String    @default("in_person") // in_person | online | both (legacy)
+  offered_modalities      String    @default("in_person") // CSV: in_person,online,home
+  waitlist_auto_assign    Boolean   @default(false) // asignar automaticamente el hueco liberado al primer encolado (FIFO)
+  show_contact            Boolean   @default(false) // mostrar datos de contacto en el portal publico
+  home_service_fee        Decimal   @default(0) @db.Decimal(10, 2) // recargo por servicio a domicilio (0 = sin costo adicional)
   created_at              DateTime  @default(now())
   updated_at              DateTime  @updatedAt
 
@@ -189,6 +195,7 @@ model Branch {
   city         String?
   latitude     Decimal? @db.Decimal(10, 7)
   longitude    Decimal? @db.Decimal(10, 7)
+  maps_url     String?  // enlace de Google Maps de la sucursal (Como llegar)
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
@@ -430,7 +437,10 @@ model Appointment {
   location        String?
   video_call_url  String?
   google_event_id String?
-  modality        String?           @default("in_person")
+  modality        String?           @default("in_person") // in_person | online | home
+  contact_phone   String?
+  home_address    String?
+  maps_url        String?
   archived        Boolean           @default(false)
   booked_by_email String?
   booked_by_name  String?

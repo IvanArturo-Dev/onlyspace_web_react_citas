@@ -28,8 +28,12 @@ export default function Sucursales() {
   // Campos de ubicacion (strings en el input; se convierten a number|null al enviar).
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+  // Enlace de Google Maps: flujo principal para indicar la ubicacion (Req 7.1).
+  const [mapsUrl, setMapsUrl] = useState("");
+  // Coordenadas: ahora opcionales/secundarias, colapsadas por defecto (Req 7.3).
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
+  const [showCoords, setShowCoords] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -45,8 +49,10 @@ export default function Sucursales() {
     setName("");
     setAddress("");
     setCity("");
+    setMapsUrl("");
     setLatitude("");
     setLongitude("");
+    setShowCoords(false);
     setFormError("");
     setModalOpen(true);
   };
@@ -56,8 +62,11 @@ export default function Sucursales() {
     setName(b.name);
     setAddress(b.address ?? "");
     setCity(b.city ?? "");
+    setMapsUrl(b.maps_url ?? "");
     setLatitude(b.latitude != null ? String(b.latitude) : "");
     setLongitude(b.longitude != null ? String(b.longitude) : "");
+    // Muestra las coordenadas colapsadas por defecto; se abren si ya hay datos.
+    setShowCoords(b.latitude != null || b.longitude != null);
     setFormError("");
     setModalOpen(true);
   };
@@ -100,10 +109,19 @@ export default function Sucursales() {
           lngValue = parsed;
         }
 
+        // Enlace de Google Maps: validacion ligera (si hay valor, debe ser http/https).
+        const mapsTrim = mapsUrl.trim();
+        if (mapsTrim !== "" && !/^https?:\/\//i.test(mapsTrim)) {
+          setFormError("El enlace de Google Maps debe empezar con http:// o https://");
+          setSaving(false);
+          return;
+        }
+
         await branchService.update(editing.id, {
           name: name.trim(),
           address: address.trim() === "" ? null : address.trim(),
           city: city.trim() === "" ? null : city.trim(),
+          maps_url: mapsTrim === "" ? null : mapsTrim,
           latitude: latValue,
           longitude: lngValue,
         });
@@ -279,36 +297,60 @@ export default function Sucursales() {
                 <label htmlFor="branch-city">Ciudad</label>
                 <input id="branch-city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ciudad" />
               </div>
-              <div style={styles.coordsRow}>
-                <div style={{ ...styles.field, flex: 1, marginBottom: 0 }}>
-                  <label htmlFor="branch-lat">Latitud</label>
-                  <input
-                    id="branch-lat"
-                    type="number"
-                    step="any"
-                    inputMode="decimal"
-                    value={latitude}
-                    onChange={(e) => setLatitude(e.target.value)}
-                    placeholder="19.4326"
-                  />
-                </div>
-                <div style={{ ...styles.field, flex: 1, marginBottom: 0 }}>
-                  <label htmlFor="branch-lng">Longitud</label>
-                  <input
-                    id="branch-lng"
-                    type="number"
-                    step="any"
-                    inputMode="decimal"
-                    value={longitude}
-                    onChange={(e) => setLongitude(e.target.value)}
-                    placeholder="-99.1332"
-                  />
-                </div>
+              <div style={styles.field}>
+                <label htmlFor="branch-maps-url">Enlace de Google Maps</label>
+                <input
+                  id="branch-maps-url"
+                  type="url"
+                  inputMode="url"
+                  value={mapsUrl}
+                  onChange={(e) => setMapsUrl(e.target.value)}
+                  placeholder="https://maps.app.goo.gl/..."
+                />
               </div>
               <p style={styles.helpText}>
-                Pega tu latitud y longitud desde Google Maps (clic derecho sobre tu ubicación &gt; la primera opción copia
-                las coordenadas).
+                Pega el enlace de Google Maps de tu sucursal (Compartir &gt; Copiar vínculo). Tus clientes verán un botón
+                "Cómo llegar" en el portal.
               </p>
+
+              {/* Coordenadas: opcionales/secundarias, colapsadas por defecto (Req 7.3). */}
+              <button type="button" style={styles.coordsToggle} onClick={() => setShowCoords((v) => !v)}>
+                {showCoords ? "▾" : "▸"} Coordenadas (opcional)
+              </button>
+              {showCoords && (
+                <>
+                  <div style={styles.coordsRow}>
+                    <div style={{ ...styles.field, flex: 1, marginBottom: 0 }}>
+                      <label htmlFor="branch-lat">Latitud</label>
+                      <input
+                        id="branch-lat"
+                        type="number"
+                        step="any"
+                        inputMode="decimal"
+                        value={latitude}
+                        onChange={(e) => setLatitude(e.target.value)}
+                        placeholder="19.4326"
+                      />
+                    </div>
+                    <div style={{ ...styles.field, flex: 1, marginBottom: 0 }}>
+                      <label htmlFor="branch-lng">Longitud</label>
+                      <input
+                        id="branch-lng"
+                        type="number"
+                        step="any"
+                        inputMode="decimal"
+                        value={longitude}
+                        onChange={(e) => setLongitude(e.target.value)}
+                        placeholder="-99.1332"
+                      />
+                    </div>
+                  </div>
+                  <p style={styles.helpText}>
+                    Solo si quieres conservar coordenadas exactas. El enlace de Google Maps es suficiente para que el
+                    cliente llegue.
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <p style={styles.helpText}>Podrás configurar la dirección y ubicación de la sucursal al editarla.</p>
@@ -336,6 +378,7 @@ const styles: Record<string, CSSProperties> = {
   actions: { display: "inline-flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" },
   field: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 },
   coordsRow: { display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" },
+  coordsToggle: { background: "none", border: "none", color: "var(--text-muted)", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 10, textAlign: "left" },
   helpText: { color: "var(--text-muted)", fontSize: 12, marginTop: 0, marginBottom: 14, lineHeight: 1.4 },
   formError: { background: "var(--danger-soft)", color: "var(--danger)", padding: 10, borderRadius: "var(--radius-sm)", marginBottom: 14, fontSize: 14 },
   formActions: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 },

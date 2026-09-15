@@ -64,10 +64,72 @@ function readError(err: any, fallback: string): string {
   return err?.response?.data?.error?.message || err?.message || fallback;
 }
 
+/** Modalidades soportadas por el portal (incluye "a domicilio"). */
+type Modality = "in_person" | "online" | "home";
+
+/** Etiqueta legible en espanol para cada modalidad. */
+const MODALITY_LABEL: Record<Modality, string> = {
+  in_person: "Presencial",
+  online: "En linea",
+  home: "A domicilio",
+};
+
+/**
+ * Deriva la lista de modalidades disponibles a partir de la info publica.
+ * Preferimos `offered_modalities` (nuevo). Si no viene, caemos al legacy
+ * `offered_modality` con el mapeo: in_person->[in_person], online->[online],
+ * both->[in_person, online]. Ademas se respeta `online_sessions_enabled`: si el
+ * negocio no tiene las sesiones en linea activas, se descarta "online".
+ */
+function deriveModalities(info: PublicInfo | null): Modality[] {
+  if (!info) return ["in_person"];
+  const allowed: Modality[] = ["in_person", "online", "home"];
+  let list: Modality[];
+  if (Array.isArray(info.offered_modalities) && info.offered_modalities.length > 0) {
+    // Filtramos a valores validos y deduplicamos conservando el orden.
+    list = info.offered_modalities.filter((m): m is Modality => allowed.includes(m as Modality));
+  } else {
+    // Compatibilidad con el campo legacy.
+    switch (info.offered_modality) {
+      case "online":
+        list = ["online"];
+        break;
+      case "both":
+        list = ["in_person", "online"];
+        break;
+      default:
+        list = ["in_person"];
+    }
+  }
+  // Deduplicar preservando orden.
+  list = list.filter((m, i) => list.indexOf(m) === i);
+  // Gating de "online": solo disponible si el negocio tiene sesiones en linea
+  // activas (mismo criterio que hasta hoy). Si el flag no viene, no se descarta
+  // para no romper negocios que no lo exponen aun.
+  if (info.online_sessions_enabled === false) {
+    list = list.filter((m) => m !== "online");
+  }
+  // Nunca dejar la lista vacia: siempre queda al menos presencial.
+  return list.length > 0 ? list : ["in_person"];
+}
+
+/** Valida de forma laxa que un texto parezca una URL http/https. */
+function looksLikeHttpUrl(value: string): boolean {
+  const v = value.trim();
+  if (!/^https?:\/\//i.test(v)) return false;
+  try {
+    // eslint-disable-next-line no-new
+    new URL(v);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function BookingPortal() {
   const { code = "" } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, loginWithGoogle, user } = useAuthStore();
+  const { isAuthenticated, loginWithGoogle } = useAuthStore();
 
   const [info, setInfo] = useState<PublicInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
@@ -82,7 +144,13 @@ export default function BookingPortal() {
   const [slotsError, setSlotsError] = useState("");
 
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-  const [modality, setModality] = useState<"in_person" | "online">("in_person");
+  // Modalidad seleccionada por el cliente. Ahora admite "home" (a domicilio).
+  const [modality, setModality] = useState<Modality>("in_person");
+  // Telefono de contacto: obligatorio SIEMPRE (el backend lo exige).
+  const [contactPhone, setContactPhone] = useState("");
+  // Campos condicionales para la modalidad a domicilio.
+  const [homeAddress, setHomeAddress] = useState("");
+  const [mapsUrl, setMapsUrl] = useState("");
   const [booking, setBooking] = useState(false);
   const [bookError, setBookError] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
@@ -95,6 +163,15 @@ export default function BookingPortal() {
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
   const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [waitlistError, setWaitlistError] = useState("");
+  // Telefono de contacto obligatorio para avisar al cliente si se libera un
+  // espacio de la lista de espera.
+  const [waitlistPhone, setWaitlistPhone] = useState("");
+
+  // Buscador del listado de servicios (paso 1): filtra por nombre en vivo.
+  const [serviceQuery, setServiceQuery] = useState("");
+
+  // Modalidades ofrecidas por el negocio, derivadas de la info publica.
+  const availableModalities = deriveModalities(info);
 
   // Cargar info del negocio al montar / cambiar de codigo.
   useEffect(() => {
@@ -116,7 +193,13 @@ export default function BookingPortal() {
     setInvalidCode(false);
     publicBookingService
       .getInfo(code)
-      .then((data) => setInfo(data))
+      .then((data) => {
+        setInfo(data);
+        // Modalidad ofrecida (Requirements 1.3, 1.4, 2.1): preseleccionamos la
+        // primera modalidad disponible. Si el negocio ofrece una sola, el
+        // selector se oculta al reservar y se usa esa directamente.
+        setModality(deriveModalities(data)[0]);
+      })
       .catch((err) => {
         if (err?.response?.status === 404) {
           setInvalidCode(true);
@@ -145,9 +228,16 @@ export default function BookingPortal() {
     setSlots([]);
     setBookError("");
     setConfirmed(false);
-    setModality("in_person");
+    // Respeta la modalidad ofrecida por el negocio (Requirements 1.3, 1.4, 2.1):
+    // vuelve a la primera modalidad disponible al cambiar de servicio.
+    setModality(availableModalities[0]);
+    // Limpia los datos de contacto/domicilio al reiniciar el flujo.
+    setContactPhone("");
+    setHomeAddress("");
+    setMapsUrl("");
     setWaitlistJoined(false);
     setWaitlistError("");
+    setWaitlistPhone("");
     if (date) loadAvailability(service, date);
   };
 
@@ -157,6 +247,7 @@ export default function BookingPortal() {
     setBookError("");
     setWaitlistJoined(false);
     setWaitlistError("");
+    setWaitlistPhone("");
     if (selectedService && value) loadAvailability(selectedService, value);
   };
 
@@ -175,6 +266,30 @@ export default function BookingPortal() {
 
   const handleConfirm = async () => {
     if (!selectedService || !selectedSlot) return;
+
+    // Validaciones en cliente antes de enviar (Requirements 3.1, 3.4, 4.x):
+    // el telefono de contacto es obligatorio SIEMPRE.
+    const phone = contactPhone.trim();
+    if (phone.replace(/\D/g, "").length < 7) {
+      setBookError("Ingresa un telefono de contacto valido.");
+      return;
+    }
+
+    // Si la modalidad es a domicilio, la direccion y el enlace de Google Maps
+    // son obligatorios (el enlace debe parecer una URL http/https).
+    const address = homeAddress.trim();
+    const maps = mapsUrl.trim();
+    if (modality === "home") {
+      if (!address) {
+        setBookError("Ingresa la direccion donde recibiras el servicio.");
+        return;
+      }
+      if (!maps || !looksLikeHttpUrl(maps)) {
+        setBookError("Ingresa un enlace de Google Maps valido (debe empezar con http o https).");
+        return;
+      }
+    }
+
     setBooking(true);
     setBookError("");
     try {
@@ -183,16 +298,28 @@ export default function BookingPortal() {
         start_time: selectedSlot.start,
         // El cliente siempre puede elegir la modalidad (sin gating por Google).
         modality,
+        // Telefono de contacto obligatorio para el backend.
+        contact_phone: phone,
+        // Datos del domicilio solo cuando la modalidad es a domicilio.
+        ...(modality === "home" ? { home_address: address, maps_url: maps } : {}),
       });
       // Si la cita en linea ya trae enlace de Meet, lo mostramos al cliente.
       setVideoCallUrl(typeof result?.video_call_url === "string" ? result.video_call_url : null);
       trackEvent("appointment_booked", { code, service_id: selectedService.id, modality });
       setConfirmed(true);
     } catch (err: any) {
+      const apiCode = err?.response?.data?.error?.code;
       if (err?.response?.status === 409) {
         setBookError("Ese horario ya fue tomado, elige otro");
         setSelectedSlot(null);
         if (selectedService && date) loadAvailability(selectedService, date);
+      } else if (apiCode === "CONTACT_PHONE_REQUIRED") {
+        // Mapeo de errores 400 del backend a mensajes claros en espanol.
+        setBookError("El telefono de contacto es obligatorio para agendar la cita.");
+      } else if (apiCode === "HOME_DETAILS_REQUIRED") {
+        setBookError("Para el servicio a domicilio necesitas indicar la direccion y un enlace de Google Maps.");
+      } else if (apiCode === "MODALITY_NOT_OFFERED") {
+        setBookError("Esa modalidad no esta disponible para este negocio.");
       } else {
         setBookError(readError(err, "No se pudo agendar la cita"));
       }
@@ -208,17 +335,21 @@ export default function BookingPortal() {
   // claro en espanol sin romper el flujo de reserva.
   const handleJoinWaitlist = async () => {
     if (!selectedService || !date) return;
+    // El telefono es obligatorio: es el medio por el que avisamos al cliente.
+    const phone = waitlistPhone.trim();
+    if (phone.replace(/\D/g, "").length < 7) {
+      setWaitlistError("Ingresa un telefono valido para poder avisarte.");
+      return;
+    }
     setJoiningWaitlist(true);
     setWaitlistError("");
-    // El id de cliente no esta garantizado en el portal publico; enviamos el del
-    // usuario autenticado como referencia. Si el backend no lo acepta, el catch
-    // muestra un mensaje entendible.
-    const customerId = user?.id ?? "";
     try {
-      await waitlistService.join({
+      // Endpoint PUBLICO: el backend resuelve/crea el customer del cliente
+      // autenticado y guarda el telefono de contacto (evita el 403 del staff).
+      await waitlistService.joinPublic(code, {
         serviceId: selectedService.id,
-        customerId,
-        desiredDate: date,
+        date,
+        phone,
       });
       trackEvent("waitlist_joined", { code, service_id: selectedService.id });
       setWaitlistJoined(true);
@@ -328,6 +459,18 @@ export default function BookingPortal() {
             <p style={subtitle}>
               {info?.branch?.name ? `${info.branch.name} · ` : ""}Agenda tu cita en unos pasos
             </p>
+            {/* Boton discreto "Como llegar": abre el enlace de Google Maps de la
+                sucursal en una pestana nueva (Req 7.2). Solo si el backend lo trae. */}
+            {info?.branch?.maps_url && (
+              <a
+                href={info.branch.maps_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.directionsLink}
+              >
+                📍 Cómo llegar
+              </a>
+            )}
           </div>
         </div>
         <ThemeToggle />
@@ -420,7 +563,7 @@ export default function BookingPortal() {
             </div>
             <div style={styles.detailRow}>
               <span style={styles.detailLabel}>Modalidad</span>
-              <span style={styles.detailValue}>{modality === "online" ? "En linea" : "Presencial"}</span>
+              <span style={styles.detailValue}>{MODALITY_LABEL[modality]}</span>
             </div>
           </div>
 
@@ -446,28 +589,54 @@ export default function BookingPortal() {
           <section style={styles.section} className="reveal">
             <div style={styles.stepTitle}>1. Elige una categoria</div>
             {info?.services?.length ? (
-              <div style={styles.serviceGrid}>
-                {info.services.map((s) => {
-                  const active = selectedService?.id === s.id;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => handleSelectService(s)}
-                      className="lift focusable"
-                      style={{
-                        ...styles.serviceCard,
-                        borderColor: active ? "var(--portal-accent)" : "var(--border)",
-                        background: active ? "var(--brand-soft)" : "var(--surface)",
-                      }}
-                    >
-                      <span style={styles.serviceName}>{s.name}</span>
-                      <span style={subtitle}>{s.duration_mins} min</span>
-                      <span style={styles.servicePrice}>${s.price}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              (() => {
+                // Buscador en vivo (Requirements 4.1, 4.2, 4.3): filtra los
+                // servicios por nombre sin distinguir mayusculas/minusculas.
+                const q = serviceQuery.trim().toLowerCase();
+                const filtered = q
+                  ? info.services.filter((s) => s.name.toLowerCase().includes(q))
+                  : info.services;
+                return (
+                  <>
+                    <input
+                      type="search"
+                      value={serviceQuery}
+                      onChange={(e) => setServiceQuery(e.target.value)}
+                      placeholder="Buscar categoria por nombre..."
+                      style={{ ...styles.dateInput, width: "100%", boxSizing: "border-box", marginBottom: 12 }}
+                      aria-label="Buscar categoria por nombre"
+                    />
+                    {filtered.length > 0 ? (
+                      <div style={styles.serviceGrid}>
+                        {filtered.map((s) => {
+                          const active = selectedService?.id === s.id;
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => handleSelectService(s)}
+                              className="lift focusable"
+                              style={{
+                                ...styles.serviceCard,
+                                borderColor: active ? "var(--portal-accent)" : "var(--border)",
+                                background: active ? "var(--brand-soft)" : "var(--surface)",
+                              }}
+                            >
+                              <span style={styles.serviceName}>{s.name}</span>
+                              <span style={subtitle}>{s.duration_mins} min</span>
+                              <span style={styles.servicePrice}>${s.price}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ ...card, padding: 18, textAlign: "center", color: "var(--text-muted)" }}>
+                        No se encontraron servicios
+                      </div>
+                    )}
+                  </>
+                );
+              })()
             ) : (
               <div style={{ ...card, padding: 24, textAlign: "center", color: "var(--text-muted)" }}>
                 Este negocio aun no tiene categorias disponibles.
@@ -518,21 +687,39 @@ export default function BookingPortal() {
                             </div>
                           )}
                           {isAuthenticated ? (
-                            <button
-                              type="button"
-                              style={{ ...btn("secondary"), width: "100%" }}
-                              onClick={handleJoinWaitlist}
-                              disabled={joiningWaitlist}
-                              aria-busy={joiningWaitlist}
-                            >
-                              {joiningWaitlist ? (
-                                <>
-                                  <Spinner size={16} /> Anotando...
-                                </>
-                              ) : (
-                                "Anotarme en lista de espera"
-                              )}
-                            </button>
+                            <>
+                              <label htmlFor="waitlist-phone" style={{ ...subtitle, display: "block", marginBottom: 6 }}>
+                                Telefono de contacto
+                              </label>
+                              <input
+                                id="waitlist-phone"
+                                type="tel"
+                                inputMode="tel"
+                                value={waitlistPhone}
+                                onChange={(e) => {
+                                  setWaitlistPhone(e.target.value);
+                                  if (waitlistError) setWaitlistError("");
+                                }}
+                                placeholder="Ej. 55 1234 5678"
+                                style={{ ...styles.dateInput, marginBottom: 12 }}
+                                aria-label="Telefono de contacto para la lista de espera"
+                              />
+                              <button
+                                type="button"
+                                style={{ ...btn("secondary"), width: "100%" }}
+                                onClick={handleJoinWaitlist}
+                                disabled={joiningWaitlist}
+                                aria-busy={joiningWaitlist}
+                              >
+                                {joiningWaitlist ? (
+                                  <>
+                                    <Spinner size={16} /> Anotando...
+                                  </>
+                                ) : (
+                                  "Anotarme en lista de espera"
+                                )}
+                              </button>
+                            </>
                           ) : (
                             <>
                               <p style={{ ...subtitle, marginBottom: 10 }}>
@@ -602,34 +789,123 @@ export default function BookingPortal() {
                   {formatTime(selectedSlot.start)} - {formatTime(selectedSlot.end)}
                 </p>
 
-                {/* Selector de modalidad: siempre disponible para el cliente (Req 4.3). */}
-                <div style={{ marginBottom: 16 }}>
-                  <p style={{ ...subtitle, marginBottom: 8 }}>¿Como sera tu cita?</p>
-                  <div style={styles.modalityGroup}>
-                    {([
-                      { key: "in_person", label: "Presencial" },
-                      { key: "online", label: "En linea" },
-                    ] as const).map((opt) => {
-                      const active = modality === opt.key;
-                      return (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          onClick={() => setModality(opt.key)}
-                          aria-pressed={active}
-                          style={{
-                            ...styles.modalityBtn,
-                            borderColor: active ? "var(--portal-accent)" : "var(--border-strong)",
-                            background: active ? "var(--portal-accent)" : "var(--surface)",
-                            color: active ? "var(--brand-contrast)" : "var(--text)",
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
+                {/* Selector de modalidad segun las modalidades ofrecidas por el
+                    negocio (Requirements 1.3, 1.4, 2.1, 2.2): solo se muestra si
+                    hay 2 o mas; con una sola se usa esa directamente (oculto).
+                    Incluye "A domicilio" cuando el negocio la ofrece. */}
+                {availableModalities.length >= 2 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ ...subtitle, marginBottom: 8 }}>¿Como sera tu cita?</p>
+                    <div style={styles.modalityGroup}>
+                      {availableModalities.map((key) => {
+                        const active = modality === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setModality(key);
+                              if (bookError) setBookError("");
+                            }}
+                            aria-pressed={active}
+                            style={{
+                              ...styles.modalityBtn,
+                              borderColor: active ? "var(--portal-accent)" : "var(--border-strong)",
+                              background: active ? "var(--portal-accent)" : "var(--surface)",
+                              color: active ? "var(--brand-contrast)" : "var(--text)",
+                            }}
+                          >
+                            {MODALITY_LABEL[key]}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                )}
+
+                {/* Telefono de contacto: obligatorio SIEMPRE (Requirement 3.1). */}
+                <div style={{ marginBottom: 16 }}>
+                  <label
+                    htmlFor="contact-phone"
+                    style={{ ...subtitle, display: "block", marginBottom: 6 }}
+                  >
+                    Telefono de contacto
+                  </label>
+                  <input
+                    id="contact-phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={contactPhone}
+                    onChange={(e) => {
+                      setContactPhone(e.target.value);
+                      if (bookError) setBookError("");
+                    }}
+                    placeholder="Ej. 55 1234 5678"
+                    style={{ ...styles.dateInput, width: "100%", boxSizing: "border-box" }}
+                    aria-label="Telefono de contacto para la cita"
+                  />
                 </div>
+
+                {/* Campos condicionales para la modalidad a domicilio
+                    (Requirements 3.4, 4.x): direccion + enlace de Google Maps,
+                    ambos obligatorios cuando modality === 'home'. */}
+                {modality === "home" && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label
+                      htmlFor="home-address"
+                      style={{ ...subtitle, display: "block", marginBottom: 6 }}
+                    >
+                      Dirección donde recibirás el servicio
+                    </label>
+                    <input
+                      id="home-address"
+                      type="text"
+                      value={homeAddress}
+                      onChange={(e) => {
+                        setHomeAddress(e.target.value);
+                        if (bookError) setBookError("");
+                      }}
+                      placeholder="Calle, numero, colonia, referencias"
+                      style={{ ...styles.dateInput, width: "100%", boxSizing: "border-box", marginBottom: 12 }}
+                      aria-label="Direccion donde recibiras el servicio"
+                    />
+                    <label
+                      htmlFor="maps-url"
+                      style={{ ...subtitle, display: "block", marginBottom: 6 }}
+                    >
+                      URL de Google Maps
+                    </label>
+                    <input
+                      id="maps-url"
+                      type="url"
+                      inputMode="url"
+                      value={mapsUrl}
+                      onChange={(e) => {
+                        setMapsUrl(e.target.value);
+                        if (bookError) setBookError("");
+                      }}
+                      placeholder="https://maps.google.com/..."
+                      style={{ ...styles.dateInput, width: "100%", boxSizing: "border-box" }}
+                      aria-label="Enlace de Google Maps del domicilio"
+                    />
+
+                    {/* Aviso del recargo a domicilio (Requirements 1.3, 1.4):
+                        si el negocio configuro un costo adicional, lo mostramos
+                        con el monto; si es 0 o no viene, indicamos que no hay
+                        costo adicional. Estilo discreto (nota debajo de los
+                        campos de domicilio). */}
+                    {(info?.home_service_fee ?? 0) > 0 ? (
+                      <p style={{ ...subtitle, marginTop: 10, color: "var(--text)" }}>
+                        💵 Costo adicional a domicilio:{" "}
+                        <strong>${info?.home_service_fee} MXN</strong>
+                      </p>
+                    ) : (
+                      <p style={{ ...subtitle, marginTop: 10 }}>
+                        Sin costo adicional a domicilio
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {bookError && (
                   <div style={styles.errorBox} role="alert">{bookError}</div>
@@ -697,8 +973,10 @@ export default function BookingPortal() {
       )}
 
       {/* Portal no premium: espacio de AdSense discreto y claramente etiquetado.
-          AdSlot no renderiza nada en produccion si VITE_ADSENSE_CLIENT no esta definido. */}
-      {!isPremium && adsEnabled && (
+          Politica AdSense: solo se muestra cuando el negocio ya cargo y tiene
+          contenido real (servicios). Nunca en un portal vacio o "en construccion",
+          para no infringir "anuncios en pantallas sin contenido". */}
+      {!isPremium && adsEnabled && !confirmed && (info?.services?.length ?? 0) > 0 && (
         <section style={styles.section} aria-label="Publicidad">
           <AdSlot />
         </section>
@@ -722,6 +1000,16 @@ const styles: Record<string, CSSProperties> = {
   messageCard: { padding: 32, maxWidth: 420, textAlign: "center" },
   header: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 24 },
   headerMain: { display: "flex", alignItems: "center", gap: 14, minWidth: 0 },
+  directionsLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--portal-accent)",
+    textDecoration: "none",
+  },
   logo: { height: 44, width: "auto", maxWidth: 140, objectFit: "contain", borderRadius: "var(--radius-sm)", flexShrink: 0 },
   banner: {
     ...card,

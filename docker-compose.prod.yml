@@ -1,0 +1,174 @@
+# docker-compose.prod.yml
+# Stack de PRODUCCION de OnlySpace para un unico host (EC2).
+# Servicios: MySQL 8, Redis 7, backend Node/Express (Prisma) y Nginx (reverse proxy + estaticos).
+#
+# Este archivo REEMPLAZA al backend/docker-compose.yml (obsoleto: usa PostgreSQL + pgAdmin,
+# que no corresponde al sistema real basado en MySQL). Ese archivo no se borra aqui.
+#
+# Todos los valores sensibles se inyectan por variables de entorno (${VAR}) desde un
+# archivo .env de produccion en el host (NO commiteado) o desde el pipeline de CD.
+# Ver la nota al final del archivo.
+
+services:
+  # ----------------------------------------------------------------------------
+  # Base de datos MySQL. Solo accesible dentro de la red interna (sin puertos al host).
+  # ----------------------------------------------------------------------------
+  mysql:
+    image: mysql:8
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      # Volumen persistente: los datos sobreviven a reinicios y recreaciones del contenedor.
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # mysqladmin ping confirma que el servidor acepta conexiones antes de arrancar el backend.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - onlyspace-net
+
+  # ----------------------------------------------------------------------------
+  # Cache Redis. Solo accesible dentro de la red interna (sin puertos al host).
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    volumes:
+      # Persistencia opcional de Redis.
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - onlyspace-net
+
+  # ----------------------------------------------------------------------------
+  # Backend Node/Express + Prisma. Construido desde backend/Dockerfile (build multi-stage).
+  # No publica el puerto 3000 al host; Nginx hace el proxy por la red interna.
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      # DATABASE_URL apunta al servicio mysql por la red interna (host = "mysql").
+      DATABASE_URL: ${DATABASE_URL}
+      # REDIS_URL apunta al servicio redis por la red interna (host = "redis").
+      REDIS_URL: ${REDIS_URL}
+      # --- Autenticacion / JWT ---
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN}
+      # --- Mercado Pago (suscripciones) ---
+      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN}
+      MERCADOPAGO_PUBLIC_KEY: ${MERCADOPAGO_PUBLIC_KEY}
+      SUBSCRIPTION_PRICE_MXN: ${SUBSCRIPTION_PRICE_MXN}
+      SUBSCRIPTION_BACK_URL: ${SUBSCRIPTION_BACK_URL}
+      TRIAL_DAYS: ${TRIAL_DAYS}
+      # --- Google OAuth / Workspace ---
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      GOOGLE_CONNECT_REDIRECT_URI: ${GOOGLE_CONNECT_REDIRECT_URI}
+      GOOGLE_TOKEN_ENC_KEY: ${GOOGLE_TOKEN_ENC_KEY}
+      # --- Firebase (validacion de ID tokens) ---
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      # --- SuperAdmin seed ---
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD}
+      # --- Frontend ---
+      FRONTEND_URL: ${FRONTEND_URL}
+    # Aplica las migraciones de Prisma ANTES de arrancar la app.
+    # El && garantiza que, si "migrate deploy" falla, node NUNCA arranca:
+    # el contenedor sale con error y no se sirve trafico con un esquema inconsistente.
+    command: sh -c "npx prisma migrate deploy && node dist/index.js"
+    # Exponer el puerto solo en la red interna de Docker (no publicado al host).
+    expose:
+      - "3000"
+    networks:
+      - onlyspace-net
+
+  # ----------------------------------------------------------------------------
+  # Nginx: reverse proxy + servidor de estaticos del frontend (build de Vite).
+  # Unico servicio con puertos publicados al host (80 y 443).
+  # NOTA: se usa nginx:alpine; la integracion de certbot (Let's Encrypt) se documenta
+  # e implementa en la tarea 1.3 (config de Nginx) y en el bootstrap del host.
+  # ----------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Configuracion de sitios (server blocks) en modo solo lectura.
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Certificados TLS de Let's Encrypt (emitidos por certbot en el host).
+      - ./nginx/letsencrypt:/etc/letsencrypt:ro
+      # Webroot compartido para los retos ACME de renovacion.
+      - ./nginx/certbot-webroot:/var/www/certbot
+      # Build estatico del frontend (Vite) servido por Nginx en modo solo lectura.
+      - ./frontend-web/dist:/usr/share/nginx/html:ro
+    networks:
+      - onlyspace-net
+
+# ------------------------------------------------------------------------------
+# Red interna que conecta los 4 servicios. Solo Nginx expone puertos al host;
+# mysql, redis y backend solo son alcanzables dentro de esta red.
+# ------------------------------------------------------------------------------
+networks:
+  onlyspace-net:
+    driver: bridge
+
+# ------------------------------------------------------------------------------
+# Volumenes nombrados persistentes.
+# ------------------------------------------------------------------------------
+volumes:
+  mysql_data:
+  redis_data:
+
+# ==============================================================================
+# NOTAS DE CONFIGURACION Y SEGURIDAD
+# ==============================================================================
+# - Las variables ${VAR} se inyectan desde un archivo .env de PRODUCCION ubicado
+#   en el host junto a este archivo (Docker Compose lo lee automaticamente), o
+#   bien desde el entorno del pipeline de CD (GitHub Actions -> SSH). Ese .env de
+#   produccion NO se commitea al repositorio (esta en .gitignore).
+#
+# - NINGUN secreto (contrasenas de MySQL, JWT_SECRET, tokens de Mercado Pago,
+#   credenciales de Google, etc.) va hardcodeado en este archivo. Todos provienen
+#   del entorno seguro del host o del pipeline (Requirement 2.5, 10.2).
+#
+# - DATABASE_URL debe apuntar al servicio mysql por la red interna, por ejemplo:
+#     mysql://<MYSQL_USER>:<MYSQL_PASSWORD>@mysql:3306/<MYSQL_DATABASE>
+#   REDIS_URL debe ser: redis://redis:6379
+#
+# - mysql y redis NO publican puertos al host: solo son accesibles dentro de la
+#   red interna onlyspace-net (Requirement 10.2 - no exposicion de datos).
+#
+# - El backend aplica "prisma migrate deploy" antes de "node dist/index.js"; si la
+#   migracion falla, el contenedor no arranca la app (Requirement 4.1/4.2).
+#
+# - Arranque en el host:  docker compose -f docker-compose.prod.yml up -d --build
+# ==============================================================================

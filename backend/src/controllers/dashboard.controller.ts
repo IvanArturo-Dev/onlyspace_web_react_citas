@@ -181,6 +181,64 @@ export const dashboardController = {
     }
   },
 
+  async getMonthlyBehavior(req: AuthRequest, res: Response): Promise<void> {
+    const tenantId = req.user!.tenant_id;
+    const monthsRaw = req.query.months as string | undefined;
+    const months = monthsRaw ? parseInt(monthsRaw, 10) : 6;
+
+    try {
+      const data = await dashboardService.getMonthlyBehavior(tenantId, months);
+      res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      if (error.statusCode) {
+        res.status(error.statusCode).json({
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message,
+          },
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred',
+        },
+      });
+    }
+  },
+
+  async getClientRankings(req: AuthRequest, res: Response): Promise<void> {
+    const tenantId = req.user!.tenant_id;
+    const limitRaw = req.query.limit as string | undefined;
+    const limit = limitRaw ? parseInt(limitRaw, 10) : 5;
+
+    try {
+      const data = await dashboardService.getClientRankings(tenantId, limit);
+      res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      if (error.statusCode) {
+        res.status(error.statusCode).json({
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message,
+          },
+        });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred',
+        },
+      });
+    }
+  },
+
   async getReport(req: AuthRequest, res: Response): Promise<void> {
     const tenantId = req.user!.tenant_id;
     const type = req.query.type as string;

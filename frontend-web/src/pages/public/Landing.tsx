@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ThemeToggle from "../../components/ThemeToggle";
 import ClientNav from "../../components/ClientNav";
 import AdSlot from "../../components/ads/AdSlot";
@@ -563,8 +563,10 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Espacio publicitario: solo si AdSense esta configurado. */}
-        {adsEnabled && (
+        {/* Espacio publicitario (AdSense). Politica: solo se muestra cuando hay
+            CONTENIDO real cargado (negocios visibles). Nunca en carga, error o
+            estado vacio, para no infringir "anuncios en pantallas sin contenido". */}
+        {adsEnabled && !loading && !loadError && items.length > 0 && (
           <section style={styles.adSection} aria-label="Publicidad">
             <AdSlot style={{ maxWidth: 728, margin: "0 auto" }} />
           </section>
@@ -580,6 +582,11 @@ export default function Landing() {
         <button type="button" onClick={() => navigate("/login")} style={styles.footerLink}>
           ¿Tienes un negocio? Inicia sesion aqui
         </button>
+        <nav style={styles.footerLegal} aria-label="Documentos legales">
+          <Link to="/terminos" style={styles.footerLegalLink}>Terminos y Condiciones</Link>
+          <span aria-hidden style={styles.footerDot}>·</span>
+          <Link to="/privacidad" style={styles.footerLegalLink}>Aviso de Privacidad</Link>
+        </nav>
       </footer>
     </div>
   );
@@ -1055,4 +1062,7 @@ const styles: Record<string, CSSProperties> = {
     cursor: "pointer",
     textDecoration: "underline",
   },
+  footerLegal: { display: "flex", alignItems: "center", gap: 8, marginTop: 8 },
+  footerLegalLink: { color: "var(--text-muted)", fontSize: 12, fontWeight: 600, textDecoration: "none" },
+  footerDot: { color: "var(--text-subtle)", fontSize: 12 },
 };

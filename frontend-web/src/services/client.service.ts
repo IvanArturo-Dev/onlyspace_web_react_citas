@@ -7,8 +7,15 @@ export interface MyAppointment {
   status: string;
   service_name: string;
   business_name: string;
+  branch_name?: string | null;
+  logo_url?: string | null;
   video_call_url?: string | null;
   modality?: string;
+  // Ubicacion enriquecida para el detalle de la cita (Requirement 2.2/2.3).
+  home_address?: string | null; // direccion capturada para citas a domicilio
+  maps_url?: string | null; // enlace de mapa de la propia cita (a domicilio)
+  branch_maps_url?: string | null; // enlace de mapa de la sucursal
+  branch_address?: string | null; // direccion textual de la sucursal
 }
 
 // Resena del cliente sobre una cita completada. comment es opcional.

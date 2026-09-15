@@ -4,7 +4,12 @@ import { AppointmentStatus } from '@prisma/client';
 // ---------------------------------------------------------------------------
 // Mock del resolvedor de tenant por codigo.
 // ---------------------------------------------------------------------------
-const TENANT = { id: 'tenant-a', name: 'Negocio A', booking_enabled: true } as any;
+const TENANT = {
+  id: 'tenant-a',
+  name: 'Negocio A',
+  booking_enabled: true,
+  offered_modality: 'both',
+} as any;
 
 const mockResolveTenantByCode = jest.fn(async (_code: string) => TENANT);
 
@@ -55,6 +60,9 @@ jest.mock('../../database/prisma.service', () => ({
 // ---------------------------------------------------------------------------
 const USER = { id: 'user-1', email: 'cliente@example.com', name: 'Cliente Uno' };
 
+/** Telefono de contacto valido: assertBookingContact lo exige siempre. */
+const PHONE = '5551234567';
+
 /** Fecha ISO futura (mañana a mediodia UTC). */
 function futureISO(): string {
   const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -98,7 +106,7 @@ describe('bookingService.createPublicBooking (unit)', () => {
 
     const result = await bookingService.createPublicBooking(
       'ab3k9p',
-      { service_id: SERVICE.id, start_time: start },
+      { service_id: SERVICE.id, start_time: start, contact_phone: PHONE },
       USER
     );
 
@@ -123,13 +131,13 @@ describe('bookingService.createPublicBooking (unit)', () => {
   });
 
   it('asocia el customer existente por email en lugar de crear uno nuevo', async () => {
-    mockTx.customer.findFirst.mockResolvedValue({ id: 'cust-existing' } as any);
+    mockTx.customer.findFirst.mockResolvedValue({ id: 'cust-existing', status: 'active' } as any);
 
     const { bookingService } = await import('../booking.service');
 
     await bookingService.createPublicBooking(
       'ab3k9p',
-      { service_id: SERVICE.id, start_time: futureISO() },
+      { service_id: SERVICE.id, start_time: futureISO(), contact_phone: PHONE },
       USER
     );
 
@@ -154,7 +162,7 @@ describe('bookingService.createPublicBooking (unit)', () => {
     await expect(
       bookingService.createPublicBooking(
         'ab3k9p',
-        { service_id: SERVICE.id, start_time: start },
+        { service_id: SERVICE.id, start_time: start, contact_phone: PHONE },
         USER
       )
     ).rejects.toMatchObject({ statusCode: 409, code: 'SLOT_TAKEN' });
@@ -203,7 +211,7 @@ describe('bookingService.createPublicBooking (unit)', () => {
 
     await bookingService.createPublicBooking(
       'zzz999',
-      { service_id: SERVICE.id, start_time: futureISO() },
+      { service_id: SERVICE.id, start_time: futureISO(), contact_phone: PHONE },
       USER
     );
 
@@ -213,5 +221,79 @@ describe('bookingService.createPublicBooking (unit)', () => {
     // El re-chequeo de solape tambien se hace sobre el tenant resuelto.
     const findManyArgs = (mockTx.appointment.findMany.mock.calls[0] as any[])[0];
     expect(findManyArgs.where.tenant_id).toBe(otherTenant.id);
+  });
+
+  // -------------------------------------------------------------------------
+  // Contacto/domicilio obligatorios (assertBookingContact).
+  // Validates: Requirements 3.1, 3.2, 3.4
+  // -------------------------------------------------------------------------
+
+  it('modalidad home con contact_phone + home_address + maps_url validos: crea y persiste esos campos', async () => {
+    // El tenant ofrece home (offered_modality 'both' no incluye home; se usa un
+    // tenant con offered_modalities que si lo incluye).
+    mockResolveTenantByCode.mockResolvedValue({
+      ...TENANT,
+      offered_modalities: 'in_person,home',
+    } as any);
+
+    const { bookingService } = await import('../booking.service');
+
+    const result = await bookingService.createPublicBooking(
+      'ab3k9p',
+      {
+        service_id: SERVICE.id,
+        start_time: futureISO(),
+        modality: 'home',
+        contact_phone: PHONE,
+        home_address: 'Calle Falsa 123',
+        maps_url: 'https://maps.google.com/?q=19.4,-99.1',
+      },
+      USER
+    );
+
+    expect(result.status).toBe(AppointmentStatus.PENDING);
+    const createArgs = (mockTx.appointment.create.mock.calls[0] as any[])[0];
+    expect(createArgs.data.modality).toBe('home');
+    expect(createArgs.data.contact_phone).toBe(PHONE);
+    expect(createArgs.data.home_address).toBe('Calle Falsa 123');
+    expect(createArgs.data.maps_url).toBe('https://maps.google.com/?q=19.4,-99.1');
+  });
+
+  it('sin contact_phone -> 400 CONTACT_PHONE_REQUIRED sin crear', async () => {
+    const { bookingService } = await import('../booking.service');
+
+    await expect(
+      bookingService.createPublicBooking(
+        'ab3k9p',
+        { service_id: SERVICE.id, start_time: futureISO() },
+        USER
+      )
+    ).rejects.toMatchObject({ statusCode: 400, code: 'CONTACT_PHONE_REQUIRED' });
+
+    expect(mockTx.appointment.create).not.toHaveBeenCalled();
+  });
+
+  it('modalidad home sin direccion/maps_url -> 400 HOME_DETAILS_REQUIRED sin crear', async () => {
+    mockResolveTenantByCode.mockResolvedValue({
+      ...TENANT,
+      offered_modalities: 'in_person,home',
+    } as any);
+
+    const { bookingService } = await import('../booking.service');
+
+    await expect(
+      bookingService.createPublicBooking(
+        'ab3k9p',
+        {
+          service_id: SERVICE.id,
+          start_time: futureISO(),
+          modality: 'home',
+          contact_phone: PHONE,
+        },
+        USER
+      )
+    ).rejects.toMatchObject({ statusCode: 400, code: 'HOME_DETAILS_REQUIRED' });
+
+    expect(mockTx.appointment.create).not.toHaveBeenCalled();
   });
 });

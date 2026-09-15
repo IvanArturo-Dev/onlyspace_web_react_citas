@@ -241,7 +241,7 @@ describe('bookingService — Property 1: aforo respeta la capacidad', () => {
     mockTx.appointment.findMany.mockResolvedValue(overlappingAppointments(start, 1) as any);
 
     await expect(
-      bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: start }, USER)
+      bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: start, contact_phone: '5551234567' }, USER)
     ).rejects.toMatchObject({ statusCode: 409, code: 'SLOT_TAKEN' });
 
     expect(mockTx.appointment.create).not.toHaveBeenCalled();
@@ -253,7 +253,7 @@ describe('bookingService — Property 1: aforo respeta la capacidad', () => {
 
     const result = await bookingService.createPublicBooking(
       'abc123',
-      { service_id: 'svc-1', start_time: futureISO() },
+      { service_id: 'svc-1', start_time: futureISO(), contact_phone: '5551234567' },
       USER
     );
 
@@ -277,7 +277,7 @@ describe('bookingService — Property 1: aforo respeta la capacidad', () => {
 
       const result = await bookingService.createPublicBooking(
         'abc123',
-        { service_id: 'svc-1', start_time: start },
+        { service_id: 'svc-1', start_time: start, contact_phone: '5551234567' },
         USER
       );
       expect(result.status).toBe(AppointmentStatus.PENDING);
@@ -291,7 +291,7 @@ describe('bookingService — Property 1: aforo respeta la capacidad', () => {
     mockTx.appointment.findMany.mockResolvedValue(overlappingAppointments(start, 3) as any);
 
     await expect(
-      bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: start }, USER)
+      bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: start, contact_phone: '5551234567' }, USER)
     ).rejects.toMatchObject({ statusCode: 409, code: 'SLOT_TAKEN' });
 
     expect(mockTx.appointment.create).not.toHaveBeenCalled();
@@ -303,7 +303,7 @@ describe('bookingService — Property 1: aforo respeta la capacidad', () => {
 
     await bookingService.createPublicBooking(
       'abc123',
-      { service_id: 'svc-1', start_time: futureISO() },
+      { service_id: 'svc-1', start_time: futureISO(), contact_phone: '5551234567' },
       USER
     );
 
@@ -326,7 +326,7 @@ describe('bookingService — Property 1: aforo respeta la capacidad', () => {
     mockTx.appointment.findMany.mockResolvedValueOnce(overlappingAppointments(start, 1) as any);
     const ok = await bookingService.createBranchBooking(
       'branch-1',
-      { service_id: 'svc-1', start_time: start },
+      { service_id: 'svc-1', start_time: start, contact_phone: '5551234567' },
       USER
     );
     expect(ok.status).toBe(AppointmentStatus.PENDING);
@@ -337,7 +337,7 @@ describe('bookingService — Property 1: aforo respeta la capacidad', () => {
     // 2 solapes == 2 -> 409.
     mockTx.appointment.findMany.mockResolvedValueOnce(overlappingAppointments(start, 2) as any);
     await expect(
-      bookingService.createBranchBooking('branch-1', { service_id: 'svc-1', start_time: start }, USER)
+      bookingService.createBranchBooking('branch-1', { service_id: 'svc-1', start_time: start, contact_phone: '5551234567' }, USER)
     ).rejects.toMatchObject({ statusCode: 409, code: 'SLOT_TAKEN' });
   });
 });

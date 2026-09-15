@@ -73,10 +73,13 @@ function relativeTime(iso: string): string {
 // sucursales, categorias, horarios, asuetos) los restringe el backend a ADMIN; para el
 // colaborador (ASSISTANT) los ocultamos por claridad, dejando visibles solo las secciones
 // operativas: Dashboard, Citas, Clientes y Mi Codigo.
-const CONFIG_ONLY_ROUTES = new Set(["/lealtad", "/asistentes", "/sucursales", "/services", "/horarios", "/asuetos", "/marketing", "/promociones", "/suscripcion"]);
+// La guia consume un endpoint ADMIN (/me/setup-progress); se oculta al colaborador
+// (ASSISTANT) para evitar un 403 confuso, igual que el resto de secciones de config.
+const CONFIG_ONLY_ROUTES = new Set(["/guia", "/lealtad", "/asistentes", "/sucursales", "/services", "/horarios", "/asuetos", "/marketing", "/promociones", "/suscripcion"]);
 
 const managementNav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: <Icon path={ICONS.dashboard} />, end: true },
+  { to: "/guia", label: "Guia de uso", icon: <Icon path={ICONS.layers} /> },
   { to: "/appointments", label: "Citas", icon: <Icon path={ICONS.calendar} /> },
   { to: "/customers", label: "Clientes", icon: <Icon path={ICONS.users} /> },
   { to: "/lealtad", label: "Lealtad", icon: <Icon path={ICONS.gift} /> },

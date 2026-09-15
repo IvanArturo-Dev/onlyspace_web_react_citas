@@ -11,6 +11,10 @@ export interface WaitlistEntry {
   desired_start: string | null;
   status: string;
   created_at: string;
+  // Enriquecido por el backend (listWaitlist) para ordenar/destacar la cola por
+  // precio del servicio en la vista del emprendedor. Aditivo y opcional.
+  service_name?: string | null;
+  service_price?: number | null;
 }
 
 // Cuerpo para unirse a la lista de espera.
@@ -58,10 +62,35 @@ function unwrap<T>(data: any): T {
   return data as T;
 }
 
+// Cuerpo para que un CLIENTE se una a la lista de espera desde el portal
+// publico. El customer se resuelve en el backend por la sesion; aqui solo se
+// envia el servicio, la fecha deseada y el telefono de contacto.
+export interface PublicWaitlistJoinInput {
+  serviceId: string;
+  date: string;
+  phone: string;
+  desiredStart?: string;
+}
+
 export const waitlistService = {
-  // Une un cliente a la lista de espera de un servicio.
+  // Une un cliente a la lista de espera de un servicio (uso del STAFF:
+  // POST /appointments/waitlist, requiere rol ADMIN/ASSISTANT).
   async join(input: WaitlistJoinInput): Promise<WaitlistEntry> {
     const res = await api.post("/appointments/waitlist", input);
+    return unwrap<WaitlistEntry>(res.data);
+  },
+
+  // Une al CLIENTE autenticado a la lista de espera desde el portal publico
+  // (POST /public/:code/waitlist). Analogo a la reserva publica: el backend
+  // resuelve/crea el customer del tenant a partir de la sesion y guarda el
+  // telefono de contacto. Evita el 403 del endpoint de staff.
+  async joinPublic(code: string, input: PublicWaitlistJoinInput): Promise<WaitlistEntry> {
+    const res = await api.post(`/public/${encodeURIComponent(code)}/waitlist`, {
+      service_id: input.serviceId,
+      date: input.date,
+      phone: input.phone,
+      ...(input.desiredStart ? { desired_start: input.desiredStart } : {}),
+    });
     return unwrap<WaitlistEntry>(res.data);
   },
 

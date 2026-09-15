@@ -9,6 +9,16 @@ function unwrap<T>(data: any): T {
 }
 
 // ---- Payloads ----
+// Comportamiento del cliente (asistencias/cancelaciones/inasistencias) scoped
+// por tenant, mas el flag at_risk (tendencia a no asistir). Lo devuelve
+// GET /customers/:id/behavior.
+export interface CustomerBehavior {
+  attended: number;
+  cancelled: number;
+  no_show: number;
+  at_risk: boolean;
+}
+
 export interface CustomerPayload {
   name: string;
   phone: string;
@@ -38,9 +48,16 @@ export interface AppointmentPayload {
   branch_id?: string;
   // Modalidad de la cita. El backend detecta "en linea" por modality === 'online'
   // (o location === 'En linea'); para citas en linea confirmadas se genera el Meet.
-  modality?: "in_person" | "online";
+  // 'home' habilita la modalidad a domicilio (requiere domicilio + maps_url).
+  modality?: "in_person" | "online" | "home";
   // URL de videollamada manual (Meet, Zoom, Teams...). "" limpia; http(s) valida.
   video_call_url?: string;
+  // Telefono de contacto del cliente para la cita (obligatorio en el backend).
+  contact_phone?: string;
+  // Domicilio del cliente; obligatorio cuando modality === 'home'.
+  home_address?: string;
+  // Enlace de Google Maps del domicilio; obligatorio cuando modality === 'home'.
+  maps_url?: string;
 }
 
 // Reprogramacion / actualizacion de una cita existente.
@@ -50,10 +67,16 @@ export interface AppointmentUpdatePayload {
   notes?: string;
   branch_id?: string;
   professional_id?: string;
-  // Modalidad de la cita. El backend la normaliza (online / in_person).
-  modality?: "in_person" | "online";
+  // Modalidad de la cita. El backend la normaliza (online / in_person / home).
+  modality?: "in_person" | "online" | "home";
   // URL de videollamada manual (Meet, Zoom, Teams...). "" limpia; http(s) valida.
   video_call_url?: string;
+  // Telefono de contacto del cliente para la cita (obligatorio en el backend).
+  contact_phone?: string;
+  // Domicilio del cliente; obligatorio cuando modality === 'home'.
+  home_address?: string;
+  // Enlace de Google Maps del domicilio; obligatorio cuando modality === 'home'.
+  maps_url?: string;
 }
 
 // Enlace de recordatorio de WhatsApp construido por el backend.
@@ -115,10 +138,85 @@ export interface AppointmentsMeta {
   is_premium: boolean;
 }
 
+// Comportamiento agregado por mes (dashboard). El backend devuelve un elemento
+// por mes con conteos de asistencias/cancelaciones/inasistencias.
+export interface MonthlyBehavior {
+  month: string; // 'YYYY-MM'
+  attended: number;
+  cancelled: number;
+  no_show: number;
+}
+
+// Una fila de ranking de clientes (dashboard): cliente + su conteo.
+export interface ClientRankingRow {
+  customer_id: string;
+  name: string;
+  count: number;
+}
+
+// Rankings de clientes del tenant: top por asistencias, inasistencias y
+// recompensas de lealtad.
+export interface ClientRankings {
+  topAttendance: ClientRankingRow[];
+  topNoShow: ClientRankingRow[];
+  topRewards: ClientRankingRow[];
+}
+
 // Configuracion de agendado del negocio. booking_horizon_days controla hasta
 // cuantos dias en el futuro puede reservar un cliente (0 = sin limite).
 export interface BookingSettings {
   booking_horizon_days: number;
+}
+
+// Modalidad ofrecida por el negocio (nivel tenant) - LEGACY. 'both' habilita
+// presencial y en linea; una sola limita la reserva a esa modalidad. Se conserva
+// por compatibilidad durante la transicion a offered_modalities (Requirements 2.1, 2.4).
+export type OfferedModality = "in_person" | "online" | "both";
+
+// Modalidad de UNA cita concreta (Requirements 2.3, 3.2). 'home' habilita la
+// modalidad a domicilio. Es el nuevo concepto que compone la lista de modalidades
+// ofrecidas por el negocio (offered_modalities).
+export type Modality = "in_person" | "online" | "home";
+
+// Configuracion del negocio (ADMIN, tenant-scoped) devuelta por GET /me/settings:
+// modalidades ofrecidas, auto-asignacion de la lista de espera y visibilidad del
+// contacto en el portal publico (Requirements 2.1, 4.1, 6.1).
+export interface BusinessSettings {
+  // Lista de modalidades ofrecidas (nuevo concepto; leer preferente).
+  offered_modalities: Modality[];
+  // Modalidad ofrecida LEGACY (compat); se conserva durante la transicion.
+  offered_modality: OfferedModality;
+  waitlist_auto_assign: boolean;
+  show_contact: boolean;
+  // Recargo por servicio a domicilio a nivel de negocio (>= 0; 0 = sin costo
+  // adicional). Se muestra al cliente al elegir la modalidad a domicilio
+  // (Requirements 1.1, 1.2, 1.5).
+  home_service_fee: number;
+}
+
+// Payload para PATCH /me/settings: solo se aplican los campos presentes.
+export type BusinessSettingsUpdate = Partial<BusinessSettings>;
+
+// Un paso de la guia de configuracion del negocio (Requirements 4.1, 4.2).
+// `done` indica si el paso ya esta cumplido segun los datos reales; `optional`
+// marca pasos que no penalizan el porcentaje (p. ej. personalizar marca).
+export interface SetupStep {
+  key: string;
+  label: string;
+  done: boolean;
+  optional: boolean;
+}
+
+// Progreso de configuracion del negocio devuelto por GET /me/setup-progress
+// (ADMIN, tenant-scoped). `percent` es el avance de los pasos obligatorios y
+// `ready` indica que el negocio esta listo para recibir reservas (Requirements
+// 4.3, 4.5).
+export interface SetupProgress {
+  steps: SetupStep[];
+  required_done: number;
+  required_total: number;
+  percent: number;
+  ready: boolean;
 }
 
 // Desanida nombres de cliente/servicio para render facil, conservando anidados.
@@ -155,6 +253,23 @@ export const dataService = {
 
   async deleteCustomer(id: string): Promise<void> {
     await api.delete(`/customers/${id}`);
+  },
+
+  // Comportamiento del cliente (asistio/cancelo/no asistio) + at_risk, scoped por
+  // tenant. Requiere ADMIN en el backend (requireAdmin).
+  async getCustomerBehavior(customerId: string): Promise<CustomerBehavior> {
+    const res = await api.get(`/customers/${customerId}/behavior`);
+    return unwrap<CustomerBehavior>(res.data);
+  },
+
+  // Bloquear/desbloquear cliente. status: "active" | "blocked". Devuelve el
+  // Customer actualizado. Requiere ADMIN en el backend.
+  async setCustomerStatus(
+    customerId: string,
+    status: "active" | "blocked"
+  ): Promise<Customer> {
+    const res = await api.patch(`/customers/${customerId}/status`, { status });
+    return unwrap<Customer>(res.data);
   },
 
   // ------- SERVICIOS -------
@@ -222,6 +337,23 @@ export const dataService = {
   async getMonthlyStats(months = 6): Promise<MonthlyStat[]> {
     const res = await api.get("/appointments/monthly-stats", { params: { months } });
     return unwrap<MonthlyStat[]>(res.data) ?? [];
+  },
+
+  // ------- DASHBOARD (comportamiento) -------
+  // Comportamiento por mes: [{ month, attended, cancelled, no_show }] ordenado
+  // ascendente. ADMIN + tenant-scoped en el backend.
+  async getMonthlyBehavior(months = 6): Promise<MonthlyBehavior[]> {
+    const res = await api.get("/dashboard/monthly-behavior", { params: { months } });
+    return unwrap<MonthlyBehavior[]>(res.data) ?? [];
+  },
+
+  // Rankings de clientes del tenant: top por asistencias, inasistencias y
+  // recompensas. ADMIN + tenant-scoped en el backend.
+  async getClientRankings(limit = 5): Promise<ClientRankings> {
+    const res = await api.get("/dashboard/client-rankings", { params: { limit } });
+    return (
+      unwrap<ClientRankings>(res.data) ?? { topAttendance: [], topNoShow: [], topRewards: [] }
+    );
   },
 
   // Descarga el reporte de citas en CSV (solo premium). Pide el blob al backend y
@@ -328,5 +460,55 @@ export const dataService = {
   async updateBookingSettings(days: number): Promise<BookingSettings> {
     const res = await api.patch("/me/booking-settings", { booking_horizon_days: days });
     return unwrap<BookingSettings>(res.data) ?? { booking_horizon_days: days };
+  },
+
+  // ------- CONFIGURACION DEL NEGOCIO (modalidad / waitlist / contacto) -------
+  // Lee la config del negocio: modalidad ofrecida, auto-asignacion de la lista
+  // de espera y visibilidad del contacto en el portal. ADMIN + tenant-scoped en
+  // el backend (Requirements 2.1, 4.1, 6.1).
+  async getBusinessSettings(): Promise<BusinessSettings> {
+    const res = await api.get("/me/settings");
+    return (
+      unwrap<BusinessSettings>(res.data) ?? {
+        offered_modalities: ["in_person"],
+        offered_modality: "in_person",
+        waitlist_auto_assign: false,
+        show_contact: false,
+        home_service_fee: 0,
+      }
+    );
+  },
+
+  // Actualiza la config del negocio. Solo se envian los campos presentes en el
+  // payload; el backend valida offered_modality contra {in_person,online,both}.
+  // Devuelve el estado actualizado. ADMIN + tenant-scoped.
+  async updateBusinessSettings(payload: BusinessSettingsUpdate): Promise<BusinessSettings> {
+    const res = await api.patch("/me/settings", payload);
+    return (
+      unwrap<BusinessSettings>(res.data) ?? {
+        offered_modalities: ["in_person"],
+        offered_modality: "in_person",
+        waitlist_auto_assign: false,
+        show_contact: false,
+        home_service_fee: 0,
+      }
+    );
+  },
+
+  // ------- GUIA DE USO (progreso de configuracion) -------
+  // Progreso de la configuracion del negocio para la guia de uso: pasos,
+  // completados/total obligatorios, porcentaje y si esta listo para recibir
+  // reservas. ADMIN + tenant-scoped en el backend (Requirements 4.1-4.5).
+  async getSetupProgress(): Promise<SetupProgress> {
+    const res = await api.get("/me/setup-progress");
+    return (
+      unwrap<SetupProgress>(res.data) ?? {
+        steps: [],
+        required_done: 0,
+        required_total: 0,
+        percent: 0,
+        ready: false,
+      }
+    );
   },
 };

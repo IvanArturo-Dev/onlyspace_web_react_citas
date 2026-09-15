@@ -154,6 +154,44 @@ meRoutes.patch(
   meController.updateBookingSettings
 );
 
+// --- Business settings (ADMIN-only, tenant-scoped) -------------------------
+// Configuracion del negocio: modalidad ofrecida (offered_modality),
+// auto-asignacion de lista de espera (waitlist_auto_assign) y visibilidad del
+// contacto en el portal publico (show_contact). Solo el ADMIN puede
+// leerlo/editarlo. Un ASSISTANT/CLIENT recibe 403 via requireAdmin antes de
+// llegar al handler (Requirement 2.1, 2.3, 4.1, 6.1, 6.4). Se usa /me/settings
+// para no chocar con /me/business ni /me/booking-settings.
+
+// GET /v1/me/settings — lee { offered_modality, waitlist_auto_assign, show_contact }.
+meRoutes.get(
+  '/settings',
+  ...authenticated,
+  requireAdmin,
+  meController.getBusinessSettings
+);
+
+// PATCH /v1/me/settings — actualiza los flags presentes (offered_modality validado).
+meRoutes.patch(
+  '/settings',
+  ...authenticated,
+  requireAdmin,
+  meController.updateBusinessSettings
+);
+
+// --- Guia de uso: progreso de configuracion (ADMIN-only, tenant-scoped) ----
+// GET /v1/me/setup-progress — devuelve los pasos de configuracion del negocio
+// (sucursal, servicio, horarios, modalidades, WhatsApp, marca [opcional] y
+// compartir codigo/QR) con su estado, el porcentaje de avance obligatorio y si
+// el negocio ya esta listo para recibir reservas. Solo el ADMIN puede leerlo;
+// un ASSISTANT/CLIENT recibe 403 via requireAdmin antes de llegar al handler
+// (Requirement 4.1, 4.2, 4.3, 4.5).
+meRoutes.get(
+  '/setup-progress',
+  ...authenticated,
+  requireAdmin,
+  meController.getSetupProgress
+);
+
 // --- Notificaciones in-app (staff, tenant-scoped) --------------------------
 // Bandeja/campana del emprendedor. Accesible por staff (ADMIN o ASSISTANT),
 // aislada por tenant (Requirement 6.2-6.5). Las rutas ESTATICAS

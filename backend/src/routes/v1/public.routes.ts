@@ -36,3 +36,9 @@ publicRoutes.get('/:code/availability', publicController.availability);
 // A diferencia de info/availability, este SI requiere authMiddleware:
 // cualquier usuario autenticado (CLIENT o ADMIN) puede crear la reserva.
 publicRoutes.post('/:code/appointments', authMiddleware, publicController.createBooking);
+
+// POST /v1/public/:code/waitlist
+// Lista de espera PUBLICA: como la reserva, requiere authMiddleware (CLIENT o
+// ADMIN). El cliente se anota aportando un telefono de contacto. Es distinta de
+// la cola del staff (POST /v1/appointments/waitlist con requireStaff).
+publicRoutes.post('/:code/waitlist', authMiddleware, publicController.joinWaitlist);

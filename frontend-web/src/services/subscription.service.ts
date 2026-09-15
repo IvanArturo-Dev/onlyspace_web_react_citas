@@ -51,6 +51,8 @@ export interface MySubscriptionStatus {
   subscription: any | null;
   is_premium: boolean;
   days_left: number | null;
+  // Precio efectivo de la suscripcion en MXN (lo expone el backend para no hardcodearlo).
+  price_mxn?: number;
 }
 
 export const mySubscriptionService = {

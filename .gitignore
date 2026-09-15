@@ -50,3 +50,33 @@ ios/build/
 
 # Docker
 docker-compose.override.yml
+
+# Secretos locales de produccion (SSM). El .example SI se versiona.
+scripts/secrets/*.env
+!scripts/secrets/*.env.example
+
+# --- Infra / IaC secrets (NUNCA versionar) ---
+# Estado de Terraform (puede contener secretos en texto plano) y variables.
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/.terraform/
+infra/**/.terraform.lock.hcl
+infra/**/*.tfvars
+!infra/**/*.tfvars.example
+# Directorio de secretos de infra (llaves SSH, etc.).
+infra/secrets/
+# Llaves privadas y certificados en cualquier ruta.
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Env de produccion del frontend (VITE_*): va por CI/GitHub Secrets, no al repo.
+frontend-web/.env.production
+frontend-web/.env.*.local
+
+# Certificados de Let's Encrypt montados por nginx en el servidor.
+nginx/letsencrypt/
+nginx/certbot-webroot/

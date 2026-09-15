@@ -15,6 +15,9 @@ export interface Branch {
   city: string | null;
   latitude: number | null;
   longitude: number | null;
+  // Enlace de Google Maps de la sucursal (Compartir > Copiar vinculo).
+  // Reemplaza el enfoque de coordenadas manuales como flujo principal.
+  maps_url: string | null;
 }
 
 // Dia de asueto de una sucursal.
@@ -56,6 +59,8 @@ export interface BranchUpdatePayload {
   city?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  // Enlace de Google Maps (URL http/https) o null para limpiarlo.
+  maps_url?: string | null;
 }
 
 export interface HolidayPayload {

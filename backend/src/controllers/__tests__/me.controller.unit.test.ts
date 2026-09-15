@@ -10,6 +10,9 @@ const mockPrisma = {
   appointment: {
     findMany: jest.fn(),
   },
+  branch: {
+    findMany: jest.fn(),
+  },
   tenant: {
     findUnique: jest.fn(),
   },
@@ -61,8 +64,9 @@ describe('meController.getMyAppointments (unit) - Property 8: client privacy', (
         status: 'PENDING',
         modality: 'online',
         video_call_url: 'https://meet.google.com/abc-defg-hij',
+        branch_id: 'branch-1',
         service: { name: 'Corte' },
-        tenant: { name: 'Barberia X' },
+        tenant: { name: 'Barberia X', logo_url: 'https://cdn.example.com/logo.png' },
       },
       {
         id: 'appt-2',
@@ -71,9 +75,13 @@ describe('meController.getMyAppointments (unit) - Property 8: client privacy', (
         status: 'CONFIRMED',
         modality: 'in_person',
         video_call_url: null,
+        branch_id: null,
         service: { name: 'Tinte' },
-        tenant: { name: 'Barberia X' },
+        tenant: { name: 'Barberia X', logo_url: 'https://cdn.example.com/logo.png' },
       },
+    ] as any);
+    mockPrisma.branch.findMany.mockResolvedValue([
+      { id: 'branch-1', name: 'Sucursal Centro', maps_url: 'https://maps.google.com/?q=centro', address: 'Av. Centro 100' },
     ] as any);
 
     const { meController } = await import('../me.controller');
@@ -104,9 +112,17 @@ describe('meController.getMyAppointments (unit) - Property 8: client privacy', (
       status: 'PENDING',
       service_name: 'Corte',
       business_name: 'Barberia X',
+      // Req 1.2/3.1: sucursal y logo del negocio para el rediseno de /mis-citas.
+      branch_name: 'Sucursal Centro',
+      logo_url: 'https://cdn.example.com/logo.png',
       // Req 3.2: the client now sees the video-call URL and modality.
       video_call_url: 'https://meet.google.com/abc-defg-hij',
       modality: 'online',
+      // Req 2.2/2.3: ubicacion enriquecida para el detalle de la cita del cliente.
+      home_address: null,
+      maps_url: null,
+      branch_maps_url: 'https://maps.google.com/?q=centro',
+      branch_address: 'Av. Centro 100',
     });
   });
 

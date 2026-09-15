@@ -40,6 +40,7 @@ const mockPrisma = {
   service: { findFirst: jest.fn(), findUnique: jest.fn() },
   branch: { findUnique: jest.fn() },
   holiday: { findFirst: jest.fn() },
+  tenant: { findUnique: jest.fn() },
   customer: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
   professional: { findUnique: jest.fn() },
   user: { findUnique: jest.fn() },
@@ -118,6 +119,9 @@ import { appointmentService } from '../appointment.service';
 
 const USER = { id: 'user-1', email: 'cliente@example.com', name: 'Cliente Uno' };
 
+/** Telefono de contacto valido: assertBookingContact lo exige siempre. */
+const PHONE = '5551234567';
+
 /** ISO futuro (24h) para pasar la validacion de start_time futuro. */
 function futureISO(): string {
   return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -135,7 +139,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockResolveTenantByCode.mockResolvedValue(TENANT as any);
   // Customer ya existe -> resolvemos por email (no crea uno nuevo).
-  mockTx.customer.findFirst.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT.id } as any);
+  mockTx.customer.findFirst.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT.id, status: 'active' } as any);
   mockTx.customer.create.mockImplementation(async (args: any) => ({ id: 'cust-new', ...args.data }));
   // Sin aforo lleno por defecto.
   mockTx.appointment.findMany.mockResolvedValue([] as any);
@@ -144,6 +148,8 @@ beforeEach(() => {
   // Sin duplicado por defecto.
   mockTx.appointment.count.mockResolvedValue(0 as any);
   mockPrisma.appointment.count.mockResolvedValue(0 as any);
+  // El negocio ofrece ambas modalidades por defecto (Requirements 2.2, 2.4).
+  mockPrisma.tenant.findUnique.mockResolvedValue({ offered_modality: 'both' } as any);
   mockPrisma.branch.findUnique.mockResolvedValue({
     id: 'branch-1',
     tenant_id: TENANT.id,
@@ -163,7 +169,7 @@ describe('Anti-duplicado — Property 1 (cliente/dia/servicio)', () => {
     mockTx.appointment.count.mockResolvedValue(1 as any);
 
     await expect(
-      bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: futureISO() }, USER)
+      bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: futureISO(), contact_phone: PHONE }, USER)
     ).rejects.toMatchObject({ statusCode: 409, code: 'DUPLICATE_BOOKING' } as never);
 
     expect(mockTx.appointment.create).not.toHaveBeenCalled();
@@ -174,14 +180,14 @@ describe('Anti-duplicado — Property 1 (cliente/dia/servicio)', () => {
     mockTx.appointment.count.mockResolvedValue(1 as any);
 
     await expect(
-      bookingService.createBranchBooking('branch-1', { service_id: 'svc-1', start_time: futureISO() }, USER)
+      bookingService.createBranchBooking('branch-1', { service_id: 'svc-1', start_time: futureISO(), contact_phone: PHONE }, USER)
     ).rejects.toMatchObject({ statusCode: 409, code: 'DUPLICATE_BOOKING' } as never);
 
     expect(mockTx.appointment.create).not.toHaveBeenCalled();
   });
 
   it('createAppointment (panel): segundo agendamiento mismo cliente/servicio/dia -> 409 DUPLICATE_BOOKING sin crear', async () => {
-    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT.id } as any);
+    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT.id, status: 'active' } as any);
     mockPrisma.service.findUnique.mockResolvedValue({
       id: 'svc-1',
       tenant_id: TENANT.id,
@@ -194,6 +200,7 @@ describe('Anti-duplicado — Property 1 (cliente/dia/servicio)', () => {
         customer_id: 'cust-1',
         service_id: 'svc-1',
         start_time: '2024-06-01T10:00:00.000Z',
+        contact_phone: PHONE,
       })
     ).rejects.toMatchObject({ statusCode: 409, code: 'DUPLICATE_BOOKING' } as never);
 
@@ -208,7 +215,7 @@ describe('Anti-duplicado — Property 1 (cliente/dia/servicio)', () => {
 
     const result = await bookingService.createPublicBooking(
       'abc123',
-      { service_id: 'svc-1', start_time: futureISO() },
+      { service_id: 'svc-1', start_time: futureISO(), contact_phone: PHONE },
       USER
     );
 
@@ -222,7 +229,7 @@ describe('Anti-duplicado — Property 1 (cliente/dia/servicio)', () => {
 
     const result = await bookingService.createPublicBooking(
       'abc123',
-      { service_id: 'svc-1', start_time: futureISO() },
+      { service_id: 'svc-1', start_time: futureISO(), contact_phone: PHONE },
       USER
     );
 
@@ -241,7 +248,7 @@ describe('Anti-duplicado — Property 2 (consistente en transaccion y aislado po
     mockPrisma.service.findFirst.mockResolvedValue(publicService(1));
     mockTx.appointment.count.mockResolvedValue(0 as any);
 
-    await bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: start }, USER);
+    await bookingService.createPublicBooking('abc123', { service_id: 'svc-1', start_time: start, contact_phone: PHONE }, USER);
 
     // La verificacion corre sobre el tx, no sobre prisma directo.
     expect(mockTx.appointment.count).toHaveBeenCalledTimes(1);
@@ -262,7 +269,7 @@ describe('Anti-duplicado — Property 2 (consistente en transaccion y aislado po
     mockPrisma.service.findFirst.mockResolvedValue(branchServiceRec(1));
     mockTx.appointment.count.mockResolvedValue(0 as any);
 
-    await bookingService.createBranchBooking('branch-1', { service_id: 'svc-1', start_time: start }, USER);
+    await bookingService.createBranchBooking('branch-1', { service_id: 'svc-1', start_time: start, contact_phone: PHONE }, USER);
 
     expect(mockTx.appointment.count).toHaveBeenCalledTimes(1);
     const where = (mockTx.appointment.count.mock.calls[0] as any[])[0].where;

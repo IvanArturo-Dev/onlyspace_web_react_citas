@@ -789,7 +789,29 @@ export const appointmentController = {
         serviceId,
         date: new Date(dateRaw),
       });
-      res.status(200).json({ success: true, data: queue });
+
+      // Enriquecemos cada entrada con el precio y el nombre del servicio para
+      // que el panel de encolados pueda ordenar/destacar por precio (Req 5.3).
+      // Todas las entradas de esta cola comparten el mismo service_id, asi que
+      // resolvemos el servicio una sola vez. Scoped por tenant (el servicio
+      // debe pertenecer al tenant autenticado); si no existe, los campos
+      // quedan null y no se rompe la respuesta.
+      const service = serviceId
+        ? await prisma.service.findFirst({
+            where: { id: serviceId, tenant_id: tenantId },
+            select: { name: true, price: true },
+          })
+        : null;
+      const servicePrice = service ? Number(service.price) : null;
+      const serviceName = service?.name ?? null;
+
+      const data = (queue as Array<Record<string, unknown>>).map((entry) => ({
+        ...entry,
+        service_name: serviceName,
+        service_price: servicePrice,
+      }));
+
+      res.status(200).json({ success: true, data });
     } catch (error: any) {
       if (error.statusCode) {
         res.status(error.statusCode).json({

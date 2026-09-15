@@ -69,7 +69,11 @@ describe('GET /v1/public/:code/info integration (por sucursal)', () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data.business.name).toBe('Negocio Uno');
-    expect(response.body.data.branch).toEqual({ id: 'branch-1', name: 'Sucursal Centro' });
+    expect(response.body.data.branch).toEqual({
+      id: 'branch-1',
+      name: 'Sucursal Centro',
+      maps_url: null,
+    });
     expect(response.body.data.services[0].id).toBe('svc-1');
     // No Google connected -> derived flag is false and no tokens leak.
     expect(response.body.data.online_sessions_enabled).toBe(false);

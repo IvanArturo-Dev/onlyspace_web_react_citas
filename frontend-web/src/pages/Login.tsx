@@ -1,15 +1,11 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { trackEvent } from "../lib/firebase";
 import ThemeToggle from "../components/ThemeToggle";
 import Spinner from "../components/Spinner";
-import AdSlot from "../components/ads/AdSlot";
 import { card } from "../ui/ui";
-
-// El espacio publicitario solo existe si AdSense esta configurado.
-const ADS_ENABLED = Boolean(import.meta.env.VITE_ADSENSE_CLIENT);
 
 function GoogleIcon() {
   return (
@@ -119,7 +115,9 @@ export default function Login() {
           </button>
 
           <p style={styles.legal}>
-            Al continuar aceptas nuestros terminos y el aviso de privacidad.
+            Al continuar aceptas nuestros{" "}
+            <Link to="/terminos" style={styles.legalLink}>Terminos y Condiciones</Link>{" "}y el{" "}
+            <Link to="/privacidad" style={styles.legalLink}>Aviso de Privacidad</Link>.
           </p>
 
           {/* Acceso para visitantes: reservar sin iniciar sesion (descubrimiento / busqueda). */}
@@ -150,12 +148,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Espacio publicitario: solo si AdSense esta configurado. */}
-        {ADS_ENABLED && (
-          <div style={styles.adWrap}>
-            <AdSlot style={{ maxWidth: 400, margin: "0 auto", width: "100%" }} />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -219,7 +211,7 @@ const styles: Record<string, CSSProperties> = {
     padding: "2px 8px",
   },
   legal: { fontSize: 12, color: "var(--text-subtle)", marginTop: 8, marginBottom: 0, lineHeight: 1.5 },
-  adWrap: { width: "100%" },
+  legalLink: { color: "var(--brand)", fontWeight: 600, textDecoration: "none" },
   error: {
     background: "var(--danger-soft)",
     color: "var(--danger)",

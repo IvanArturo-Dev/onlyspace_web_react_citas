@@ -18,6 +18,9 @@ const mockPrisma = {
   service: {
     findUnique: jest.fn(),
   },
+  tenant: {
+    findUnique: jest.fn(),
+  },
   appointment: {
     count: jest.fn(),
     findFirst: jest.fn(),
@@ -107,6 +110,7 @@ beforeEach(() => {
     id: CUSTOMER,
     tenant_id: TENANT,
     name: 'Ana',
+    status: 'active',
   } as never);
   mockPrisma.service.findUnique.mockResolvedValue({
     id: SERVICE,
@@ -116,6 +120,12 @@ beforeEach(() => {
   } as never);
   mockPrisma.appointment.count.mockResolvedValue(0 as never);
   mockPrisma.appointment.findFirst.mockResolvedValue(null as never);
+  // Tenant lookup: modalidad ambas (Requirements 2.2, 2.4) + auto-asignacion
+  // OFF por defecto, para no alterar el comportamiento historico.
+  mockPrisma.tenant.findUnique.mockResolvedValue({
+    offered_modality: 'both',
+    waitlist_auto_assign: false,
+  } as never);
   mockPrisma.appointment.create.mockImplementation(async (args: any) => ({
     ...appointment(),
     ...args.data,
@@ -179,6 +189,7 @@ describe('appointmentService.createAppointment — deuda y notificacion', () => 
       customer_id: CUSTOMER,
       service_id: SERVICE,
       start_time: '2024-06-01T10:00:00.000Z',
+      contact_phone: '5551234567',
     });
 
     expect(created.id).toBe(APPT);
@@ -198,6 +209,7 @@ describe('appointmentService.createAppointment — deuda y notificacion', () => 
       customer_id: CUSTOMER,
       service_id: SERVICE,
       start_time: '2024-06-01T10:00:00.000Z',
+      contact_phone: '5551234567',
     });
 
     expect(created.id).toBe(APPT);

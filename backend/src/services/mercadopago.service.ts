@@ -39,10 +39,18 @@ export function getAccessToken(): string {
 }
 
 /** Precio mensual de la suscripcion (MXN), configurable por env. */
-function getPriceMxn(): number {
+export function getPriceMxn(): number {
   const raw = process.env.SUBSCRIPTION_PRICE_MXN;
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 299;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 99;
+}
+
+/**
+ * Precio efectivo de la suscripcion (MXN) que consumen el controller/frontend
+ * para no hardcodear el valor. Alias publico de getPriceMxn().
+ */
+export function getSubscriptionPriceMxn(): number {
+  return getPriceMxn();
 }
 
 /** URL de retorno tras autorizar el pago (frontend). */
@@ -174,6 +182,8 @@ async function mpFetch(
 
 export const mercadopagoService = {
   getAccessToken,
+  getPriceMxn,
+  getSubscriptionPriceMxn,
 
   /**
    * Crea un preapproval (suscripcion recurrente) en Mercado Pago para el tenant

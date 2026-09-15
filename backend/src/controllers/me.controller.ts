@@ -10,6 +10,7 @@ import { brandingService } from '../services/branding.service';
 import { tenantService } from '../services/tenant.service';
 import { cancellationPolicyService } from '../services/cancellationPolicy.service';
 import { bookingSettingsService } from '../services/bookingSettings.service';
+import { setupProgressService } from '../services/setupProgress.service';
 import { notificationService } from '../services/notification.service';
 import { isPremiumEffective } from '../services/subscription.service';
 import {
@@ -18,6 +19,10 @@ import {
 } from '../services/google-account.service';
 import { HttpError } from '../utils/errors';
 import { writeAudit } from '../utils/audit';
+import {
+  parseOfferedModalities,
+  validateOfferedModalitiesArray,
+} from '../utils/modality';
 import type {
   LoyaltyProgressView,
   LoyaltyRewardView,
@@ -258,9 +263,43 @@ export const meController = {
         orderBy: { start_time: 'desc' },
         include: {
           service: { select: { name: true } },
-          tenant: { select: { name: true } },
+          // tenant.logo_url alimenta el logo del negocio en el rediseno de
+          // /mis-citas (Requirement 1.2/3.1). tenant.name se mantiene para
+          // `business_name`, que ya consume el frontend.
+          tenant: { select: { name: true, logo_url: true } },
         },
       });
+
+      // Appointment no tiene relacion `branch` en el schema (solo branch_id),
+      // asi que resolvemos los nombres de sucursal en un unico batch por los
+      // branch_id presentes. El listado se scopea por email del cliente y las
+      // sucursales se limitan a los ids referenciados por esas citas, sin
+      // ampliar el alcance a sucursales no relacionadas.
+      const branchIds = Array.from(
+        new Set(
+          appointments
+            .map((appt) => appt.branch_id)
+            .filter((id): id is string => !!id)
+        )
+      );
+      const branchNameById = new Map<string, string>();
+      // maps_url y address de la sucursal para el detalle de la cita del cliente
+      // (Requirement 2.2, 2.3): permiten el boton "Como llegar" y mostrar la
+      // direccion. Se resuelven en el mismo batch acotado a los branch_id de las
+      // citas del cliente, sin ampliar el alcance del scoping por email.
+      const branchMapsById = new Map<string, string | null>();
+      const branchAddressById = new Map<string, string | null>();
+      if (branchIds.length > 0) {
+        const branches = await prisma.branch.findMany({
+          where: { id: { in: branchIds } },
+          select: { id: true, name: true, maps_url: true, address: true },
+        });
+        for (const branch of branches) {
+          branchNameById.set(branch.id, branch.name);
+          branchMapsById.set(branch.id, branch.maps_url ?? null);
+          branchAddressById.set(branch.id, branch.address ?? null);
+        }
+      }
 
       const data = appointments.map((appt) => ({
         id: appt.id,
@@ -269,12 +308,31 @@ export const meController = {
         status: appt.status,
         service_name: appt.service?.name ?? null,
         business_name: appt.tenant?.name ?? null,
+        // Sucursal (nombre) y logo del negocio para el rediseno de /mis-citas
+        // (Requirement 1.2/3.1/3.2). branch_name es null si la cita no tiene
+        // branch_id; logo_url es null si el tenant no tiene logo cargado.
+        branch_name: appt.branch_id
+          ? branchNameById.get(appt.branch_id) ?? null
+          : null,
+        logo_url: appt.tenant?.logo_url ?? null,
         // Expose the video-call URL and modality so the client can join an
         // online appointment from "Mis citas" (Requirement 3.2/3.3). The
         // findMany has no root `select`, so both scalar columns are already
         // loaded on each row.
         video_call_url: appt.video_call_url ?? null,
         modality: appt.modality ?? 'in_person',
+        // Ubicacion de la cita para el detalle del cliente (Requirement 2.1,
+        // 2.2, 2.3). home_address/maps_url son de la propia cita (a domicilio);
+        // branch_maps_url/branch_address son de la sucursal (in_person). Null si
+        // no aplica o la cita no tiene branch_id.
+        home_address: appt.home_address ?? null,
+        maps_url: appt.maps_url ?? null,
+        branch_maps_url: appt.branch_id
+          ? branchMapsById.get(appt.branch_id) ?? null
+          : null,
+        branch_address: appt.branch_id
+          ? branchAddressById.get(appt.branch_id) ?? null
+          : null,
       }));
 
       res.status(200).json({ success: true, data });
@@ -1046,6 +1104,217 @@ export const meController = {
     try {
       const result = await notificationService.markAllRead(tenantId);
       res.status(200).json({ success: true, data: result });
+    } catch (error: any) {
+      sendMeError(res, error);
+    }
+  },
+
+  // --- Business settings (ADMIN-only, tenant-scoped) -------------------------
+  // Configuracion del negocio: modalidad ofrecida (presencial/online/ambas),
+  // auto-asignacion de la lista de espera y visibilidad del contacto en el
+  // portal publico. Solo el ADMIN puede leer/editarlo (requireAdmin en la
+  // ruta). Tenant-scoped via req.user.tenant_id (Requirement 2.1, 2.3, 4.1,
+  // 6.1, 6.4).
+
+  /**
+   * Devuelve la configuracion del negocio del tenant:
+   * { offered_modality, offered_modalities, waitlist_auto_assign, show_contact }.
+   * `offered_modalities` es un ARRAY de strings (parseado del CSV persistido en
+   * la BD). Se conserva `offered_modality` (legacy string) por compatibilidad
+   * con clientes existentes. ADMIN-only, tenant-scoped (Requirement 1.1, 1.2).
+   */
+  async getBusinessSettings(req: AuthRequest, res: Response): Promise<void> {
+    const tenantId = req.user!.tenant_id;
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          offered_modality: true,
+          offered_modalities: true,
+          waitlist_auto_assign: true,
+          show_contact: true,
+          home_service_fee: true,
+        },
+      });
+
+      if (!tenant) {
+        res.status(404).json({
+          success: false,
+          error: { code: 'TENANT_NOT_FOUND', message: 'Tenant not found' },
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          // Legacy (string) que ya consumia el panel; se mantiene intacto.
+          offered_modality: tenant.offered_modality,
+          // Nuevo: lista de modalidades ofrecidas como array de strings.
+          offered_modalities: parseOfferedModalities(tenant.offered_modalities),
+          waitlist_auto_assign: tenant.waitlist_auto_assign,
+          show_contact: tenant.show_contact,
+          // Recargo a domicilio (Requirement 1.1): se expone como number
+          // (0 = sin costo adicional). Prisma Decimal -> Number.
+          home_service_fee: Number(tenant.home_service_fee),
+        },
+      });
+    } catch (error: any) {
+      sendMeError(res, error);
+    }
+  },
+
+  /**
+   * Actualiza la configuracion del negocio del tenant. Solo se aplican los
+   * campos presentes en el body.
+   *
+   * Modalidades (Requirement 1.1, 1.2, 1.3):
+   *  - `offered_modalities`: ARRAY de strings, la forma preferida. Se valida que
+   *    tenga al menos una modalidad y que todos los valores esten en
+   *    {in_person, online, home}. Se persiste como CSV en `offered_modalities`.
+   *  - `offered_modality` (legacy string): compatibilidad. Se acepta
+   *    {in_person, online, both}; `both` se mapea a [in_person, online]. Se
+   *    guarda el string legacy y ademas la lista equivalente en
+   *    `offered_modalities` para mantener ambos campos coherentes.
+   *  Si vienen ambos, prevalece `offered_modalities` (fuente de verdad nueva).
+   *
+   * `waitlist_auto_assign` y `show_contact` son booleanos. ADMIN-only,
+   * tenant-scoped. Auditado como UPDATE sobre 'tenant'. Devuelve el estado
+   * actualizado (incluye `offered_modalities` como array).
+   */
+  async updateBusinessSettings(req: AuthRequest, res: Response): Promise<void> {
+    const tenantId = req.user!.tenant_id;
+    const { offered_modality, offered_modalities, waitlist_auto_assign, show_contact, home_service_fee } =
+      req.body ?? {};
+
+    try {
+      const data: {
+        offered_modality?: string;
+        offered_modalities?: string;
+        waitlist_auto_assign?: boolean;
+        show_contact?: boolean;
+        home_service_fee?: number;
+      } = {};
+
+      // Preferente: array explicito de modalidades. Se valida no-vacio y que
+      // todos los valores pertenezcan a {in_person, online, home}; se persiste
+      // como CSV. Requirement 1.1, 1.2.
+      if (offered_modalities !== undefined) {
+        const list = validateOfferedModalitiesArray(offered_modalities);
+        data.offered_modalities = list.join(',');
+      } else if (offered_modality !== undefined) {
+        // Compatibilidad legacy: string {in_person, online, both}. `both` se
+        // expande a [in_person, online]. Se guarda el legacy y la lista
+        // equivalente para mantener ambos campos coherentes.
+        const ALLOWED_LEGACY = ['in_person', 'online', 'both'];
+        if (
+          typeof offered_modality !== 'string' ||
+          !ALLOWED_LEGACY.includes(offered_modality)
+        ) {
+          throw new HttpError(
+            "offered_modality debe ser uno de: 'in_person', 'online', 'both'",
+            400,
+            'VALIDATION_ERROR'
+          );
+        }
+        data.offered_modality = offered_modality;
+        data.offered_modalities =
+          offered_modality === 'both'
+            ? 'in_person,online'
+            : offered_modality;
+      }
+
+      if (waitlist_auto_assign !== undefined) {
+        if (typeof waitlist_auto_assign !== 'boolean') {
+          throw new HttpError(
+            'waitlist_auto_assign debe ser un booleano',
+            400,
+            'VALIDATION_ERROR'
+          );
+        }
+        data.waitlist_auto_assign = waitlist_auto_assign;
+      }
+
+      if (show_contact !== undefined) {
+        if (typeof show_contact !== 'boolean') {
+          throw new HttpError(
+            'show_contact debe ser un booleano',
+            400,
+            'VALIDATION_ERROR'
+          );
+        }
+        data.show_contact = show_contact;
+      }
+
+      // Recargo a domicilio (Requirement 1.1, 1.2, 1.5): numero finito >= 0.
+      // 0 = sin costo adicional. Cualquier otro valor (NaN, negativo, no
+      // numerico) es un 400 VALIDATION_ERROR.
+      if (home_service_fee !== undefined) {
+        if (
+          typeof home_service_fee !== 'number' ||
+          !Number.isFinite(home_service_fee) ||
+          home_service_fee < 0
+        ) {
+          throw new HttpError(
+            'El recargo a domicilio debe ser un numero mayor o igual a 0',
+            400,
+            'VALIDATION_ERROR'
+          );
+        }
+        data.home_service_fee = home_service_fee;
+      }
+
+      const updated = await prisma.tenant.update({
+        where: { id: tenantId },
+        data,
+        select: {
+          offered_modality: true,
+          offered_modalities: true,
+          waitlist_auto_assign: true,
+          show_contact: true,
+          home_service_fee: true,
+        },
+      });
+
+      await writeAudit({
+        tenant_id: tenantId,
+        user_id: req.user!.id,
+        action: AuditAction.UPDATE,
+        resource_type: 'tenant',
+        resource_id: tenantId,
+        result: 'success',
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+      });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          offered_modality: updated.offered_modality,
+          // Devolvemos la lista como array (parseada del CSV persistido).
+          offered_modalities: parseOfferedModalities(updated.offered_modalities),
+          waitlist_auto_assign: updated.waitlist_auto_assign,
+          show_contact: updated.show_contact,
+          // Recargo a domicilio devuelto como number (Requirement 1.1).
+          home_service_fee: Number(updated.home_service_fee),
+        },
+      });
+    } catch (error: any) {
+      sendMeError(res, error);
+    }
+  },
+
+  /**
+   * Devuelve el progreso de configuracion del negocio (guia de uso): que pasos
+   * ya estan cumplidos segun los datos reales del tenant y el porcentaje de
+   * avance de los pasos obligatorios. ADMIN-only, tenant-scoped
+   * (Requirement 4.1, 4.2, 4.3, 4.5).
+   */
+  async getSetupProgress(req: AuthRequest, res: Response): Promise<void> {
+    const tenantId = req.user!.tenant_id;
+    try {
+      const data = await setupProgressService.getSetupProgress(tenantId);
+      res.status(200).json({ success: true, data });
     } catch (error: any) {
       sendMeError(res, error);
     }

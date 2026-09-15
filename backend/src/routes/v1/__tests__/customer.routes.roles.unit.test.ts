@@ -103,8 +103,8 @@ describe('customer routes — Property 4 (permisos de colaborador)', () => {
       }
     ).stack.filter((l) => l.route);
 
-    it('registra las rutas de gestion de clientes + estado/deuda de cancelacion', () => {
-      expect(layers).toHaveLength(8);
+    it('registra las rutas de gestion de clientes + estado/deuda + comportamiento/bloqueo', () => {
+      expect(layers).toHaveLength(10);
     });
 
     it.each(layers.map((l) => l.route!))(

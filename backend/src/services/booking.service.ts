@@ -4,15 +4,7 @@ import { HttpError } from '../utils/errors';
 import { publicService } from './public.service';
 import { writeAudit } from '../utils/audit';
 import { runGoogleAppointmentHook } from './google-appointment-hook';
-
-/**
- * Normaliza la modalidad recibida del portal publico. Solo el valor exacto
- * 'online' cuenta como cita en linea; cualquier otro valor (ausente,
- * desconocido o 'in_person') se persiste como 'in_person'.
- */
-function normalizeModality(modality?: string | null): 'online' | 'in_person' {
-  return modality === 'online' ? 'online' : 'in_person';
-}
+import { assertBookingContact, assertModalityOffered, normalizeModality } from '../utils/modality';
 
 /**
  * Identidad del usuario autenticado que agenda la cita desde el portal.
@@ -31,10 +23,25 @@ export interface CreatePublicBookingInput {
   service_id: string;
   start_time: string;
   /**
-   * Modalidad solicitada. Solo 'online' habilita la cita en linea; cualquier
-   * otro valor (o ausencia) se normaliza a 'in_person'.
+   * Modalidad solicitada. 'online' habilita la cita en linea, 'home' la cita a
+   * domicilio; cualquier otro valor (o ausencia) se normaliza a 'in_person'.
    */
-  modality?: 'in_person' | 'online';
+  modality?: 'in_person' | 'online' | 'home';
+  /**
+   * Telefono de contacto del cliente (Requirement 3.1). Obligatorio siempre
+   * (lo valida assertBookingContact).
+   */
+  contact_phone?: string | null;
+  /**
+   * Direccion del domicilio (Requirement 3.4). Obligatorio solo para la
+   * modalidad 'home'.
+   */
+  home_address?: string | null;
+  /**
+   * URL de Google Maps del domicilio (Requirement 3.4). Obligatorio solo para
+   * la modalidad 'home'.
+   */
+  maps_url?: string | null;
 }
 
 /**
@@ -172,6 +179,28 @@ export const bookingService = {
       throw new HttpError('El horario debe ser futuro', 400, 'INVALID_TIME');
     }
 
+    // Validacion de modalidad (Requirements 2.1, 2.5): la modalidad solicitada
+    // debe estar habilitada por Tenant.offered_modalities (CSV, fuente de verdad
+    // nueva). Se cae al legacy offered_modality solo si offered_modalities no
+    // esta presente. assertModalityOffered acepta CSV o array. Se verifica ANTES
+    // de crear nada -> 400 MODALITY_NOT_OFFERED. El tenant se cargo completo via
+    // resolveTenantByCode, por lo que ambos campos estan disponibles.
+    assertModalityOffered(
+      (tenant as any).offered_modalities ?? (tenant as any).offered_modality,
+      input.modality
+    );
+
+    // Validacion de contacto/domicilio (Requirements 3.1, 3.4): telefono
+    // obligatorio siempre; si la modalidad es 'home' tambien direccion + URL de
+    // Google Maps. Se verifica ANTES de crear nada -> 400 CONTACT_PHONE_REQUIRED
+    // o 400 HOME_DETAILS_REQUIRED.
+    assertBookingContact({
+      modality: input.modality,
+      contact_phone: input.contact_phone,
+      home_address: input.home_address,
+      maps_url: input.maps_url,
+    });
+
     const startMs = startTime.getTime();
     const endMs = endTime.getTime();
 
@@ -234,6 +263,17 @@ export const bookingService = {
             phone: 'sin-telefono',
           },
         });
+      } else if (customer.status !== 'active') {
+        // Enforcement de bloqueo (Requirement 4.2): un cliente YA existente cuyo
+        // status != "active" (p. ej. "blocked") no puede crear una nueva cita.
+        // Solo aplica a clientes existentes; uno recien creado nunca esta
+        // bloqueado. Se coloca junto a la resolucion del customer, antes del
+        // anti-duplicado, para que ninguna cita se persista si esta bloqueado.
+        throw new HttpError(
+          'El cliente esta bloqueado por el negocio y no puede reservar',
+          409,
+          'CUSTOMER_BLOCKED'
+        );
       }
 
       // Anti-duplicado (Requirement 1): mismo cliente/servicio/dia activo ->
@@ -248,6 +288,10 @@ export const bookingService = {
           start_time: startTime,
           end_time: endTime,
           status: AppointmentStatus.PENDING,
+          modality: normalizeModality(input.modality),
+          contact_phone: input.contact_phone ?? null,
+          home_address: input.home_address ?? null,
+          maps_url: input.maps_url ?? null,
           booked_by_email: user.email ?? null,
           booked_by_name: user.name ?? null,
         },
@@ -345,6 +389,31 @@ export const bookingService = {
       throw new HttpError('El horario ya no esta disponible', 409, 'SLOT_TAKEN');
     }
 
+    // Validacion de modalidad (Requirements 2.1, 2.5): la modalidad solicitada
+    // debe estar habilitada por Tenant.offered_modalities (CSV, fuente de verdad
+    // nueva) del negocio duenio de la sucursal. La Branch solo trae tenant_id,
+    // asi que se cargan ambos campos del tenant y se prefiere offered_modalities.
+    // Se verifica ANTES de crear nada -> 400 MODALITY_NOT_OFFERED.
+    const modalityTenant = await prisma.tenant.findUnique({
+      where: { id: branch.tenant_id },
+      select: { offered_modalities: true, offered_modality: true },
+    });
+    assertModalityOffered(
+      modalityTenant?.offered_modalities ?? modalityTenant?.offered_modality,
+      input.modality
+    );
+
+    // Validacion de contacto/domicilio (Requirements 3.1, 3.4): telefono
+    // obligatorio siempre; si la modalidad es 'home' tambien direccion + URL de
+    // Google Maps. Se verifica ANTES de crear nada -> 400 CONTACT_PHONE_REQUIRED
+    // o 400 HOME_DETAILS_REQUIRED.
+    assertBookingContact({
+      modality: input.modality,
+      contact_phone: input.contact_phone,
+      home_address: input.home_address,
+      maps_url: input.maps_url,
+    });
+
     const startMs = startTime.getTime();
     const endMs = endTime.getTime();
 
@@ -405,6 +474,16 @@ export const bookingService = {
             phone: 'sin-telefono',
           },
         });
+      } else if (customer.status !== 'active') {
+        // Enforcement de bloqueo (Requirement 4.2): un cliente YA existente cuyo
+        // status != "active" (p. ej. "blocked") no puede crear una nueva cita en
+        // la sucursal. Solo aplica a clientes existentes; uno recien creado nunca
+        // esta bloqueado. Antes del anti-duplicado, dentro de la misma tx.
+        throw new HttpError(
+          'El cliente esta bloqueado por el negocio y no puede reservar',
+          409,
+          'CUSTOMER_BLOCKED'
+        );
       }
 
       // Anti-duplicado (Requirement 1): mismo cliente/servicio/dia activo ->
@@ -421,6 +500,9 @@ export const bookingService = {
           end_time: endTime,
           status: AppointmentStatus.PENDING,
           modality: normalizeModality(input.modality),
+          contact_phone: input.contact_phone ?? null,
+          home_address: input.home_address ?? null,
+          maps_url: input.maps_url ?? null,
           booked_by_email: user.email ?? null,
           booked_by_name: user.name ?? null,
         },

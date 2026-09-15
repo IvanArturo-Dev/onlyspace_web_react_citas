@@ -1,59 +1,163 @@
+# =============================================================================
+# CD - Despliegue continuo a la EC2 unica (Docker Compose)
+# =============================================================================
+# Modelo de despliegue: un unico servidor EC2 que corre todo el stack con
+# docker-compose.prod.yml (backend + nginx + mysql + redis). El frontend se
+# construye aqui en el runner (Vite necesita las VITE_ en build) y su `dist`
+# se copia a la EC2, donde Nginx lo sirve como estatico.
+#
+# Flujo (Requirements 6.1-6.5, 11.3-11.5):
+#   1. push a main dispara el workflow.
+#   2. job "test": replica la verificacion de CI (backend lint+tsc+tests con
+#      MySQL de servicio, frontend tsc+build). Si falla, el deploy NO corre.
+#   3. job "build-frontend": vite build con las VITE_ desde secrets; sube el
+#      dist como artifact.
+#   4. job "deploy" (needs test + build-frontend): rsync del repo + dist a la
+#      EC2 (incluye scripts/render-env-from-ssm.sh y docker-compose.prod.yml),
+#      genera el .env de produccion EN la EC2 leyendo los secretos desde AWS SSM
+#      Parameter Store (via el IAM role de la instancia), y ejecuta
+#      docker compose -f docker-compose.prod.yml up -d --build (idempotente,
+#      aplica migraciones Prisma). Luego health check contra https://PROD_DOMAIN/health.
+#
+# GESTION DE SECRETOS (Requirement 11):
+#   Los secretos de la APLICACION (DATABASE_URL, JWT_SECRET, Mercado Pago,
+#   Google, superadmin, MySQL, Redis, etc.) YA NO viven en GitHub. Ahora viven en
+#   AWS SSM Parameter Store como SecureString bajo /onlyspace/* (los sube la tarea
+#   7.2 con scripts/load-secrets-to-ssm.sh). La EC2 los lee con su IAM instance
+#   profile (tarea 7.1: ssm:GetParametersByPath + kms:Decrypt sobre /onlyspace/*)
+#   ejecutando scripts/render-env-from-ssm.sh, que genera el .env local (chmod 600).
+#   Asi los secretos de app NUNCA transitan por GitHub Actions ni quedan en logs.
+#
+# NINGUN secreto se imprime en logs.
+#
+# -----------------------------------------------------------------------------
+# SECRETS REQUERIDOS DEL REPOSITORIO (Settings -> Secrets and variables -> Actions)
+# -----------------------------------------------------------------------------
+# Solo se necesitan los de CONEXION/DOMINIO y los VITE_ del frontend (que NO son
+# secretos: se incrustan en el bundle publico). Los secretos de la app NO van aqui:
+# viven en AWS SSM Parameter Store (/onlyspace/*) y los lee la EC2 via su IAM role.
+#
+# Acceso a la EC2 / dominio:
+#   EC2_SSH_KEY                       Clave privada SSH (formato PEM) del usuario ec2-user
+#   EC2_HOST                          IP publica o hostname de la EC2 (Elastic IP)
+#   PROD_DOMAIN                       Dominio de produccion, ej. onlyspace.mx (sin https://)
+#
+# Frontend (build de Vite en el runner; NO secretos, se incrustan en el bundle):
+#   VITE_API_URL
+#   VITE_FIREBASE_API_KEY
+#   VITE_FIREBASE_AUTH_DOMAIN
+#   VITE_FIREBASE_PROJECT_ID
+#   VITE_FIREBASE_STORAGE_BUCKET
+#   VITE_FIREBASE_MESSAGING_SENDER_ID
+#   VITE_FIREBASE_APP_ID
+# =============================================================================
+
 name: CD
 
 on:
   push:
     branches: [main]
 
+# Evita despliegues solapados: si llega un push nuevo mientras corre otro deploy,
+# el anterior se cancela para no pisarse en la EC2.
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
 jobs:
-  build-and-deploy:
+  # ---------------------------------------------------------------------------
+  # 1) Verificacion (replica de CI): backend lint+tsc+tests + frontend tsc.
+  #    Si falla, "deploy" no corre (Requirement 6.1, 6.2).
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test (backend + frontend)
     runs-on: ubuntu-latest
-    environment: production
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: citas_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/citas_test
+      JWT_SECRET: test-secret
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
 
-      # ---------- Backend: build + Docker image -> ECR ----------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend-web/package-lock.json
 
-      - name: Install backend dependencies
+      # ---- Backend: lint + tsc + tests (con MySQL de servicio, como ci.yml) ----
+      - name: Backend - install dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Build backend
+      - name: Backend - generate Prisma client
         working-directory: backend
-        run: npm run build
+        run: npx prisma generate
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Backend - apply database migrations
+        working-directory: backend
+        run: npx prisma migrate deploy
+
+      - name: Backend - lint
+        working-directory: backend
+        run: npm run lint
+
+      - name: Backend - type check
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Backend - tests
+        working-directory: backend
+        run: npm test
+
+      # ---- Frontend: tsc (build se hace en el job build-frontend) ----
+      - name: Frontend - install dependencies
+        working-directory: frontend-web
+        run: npm ci
+
+      - name: Frontend - type check
+        working-directory: frontend-web
+        run: npx tsc --noEmit
+
+  # ---------------------------------------------------------------------------
+  # 2) Build del frontend con las VITE_ de produccion. Sube el dist como artifact.
+  # ---------------------------------------------------------------------------
+  build-frontend:
+    name: Build frontend (vite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend-web/package-lock.json
 
-      - name: Login to ECR
-        run: aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-
-      - name: Build and push Docker image
-        run: |
-          ECR=${{ secrets.AWS_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/citas-api
-          docker build -t citas-api:${{ github.sha }} -f backend/Dockerfile backend
-          docker tag citas-api:${{ github.sha }} $ECR:${{ github.sha }}
-          docker tag citas-api:${{ github.sha }} $ECR:latest
-          docker push $ECR:${{ github.sha }}
-          docker push $ECR:latest
-
-      # ---------- Frontend web: build -> S3 ----------
-      - name: Install frontend dependencies
+      - name: Install dependencies
         working-directory: frontend-web
         run: npm ci
 
-      - name: Build frontend web
+      - name: Build (vite)
         working-directory: frontend-web
-        run: npm run build
+        run: npx vite build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -62,12 +166,117 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_ADSENSE_CLIENT: ${{ secrets.VITE_ADSENSE_CLIENT }}
 
-      - name: Deploy to S3
-        run: aws s3 sync ./frontend-web/dist s3://${{ secrets.AWS_S3_BUCKET }} --delete
+      - name: Upload frontend dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend-web/dist
+          if-no-files-found: error
+          retention-days: 1
 
-      - name: Invalidate CloudFront cache
-        if: ${{ env.CF_DISTRIBUTION_ID != '' }}
+  # ---------------------------------------------------------------------------
+  # 3) Deploy a la EC2. Solo corre si test y build-frontend pasaron (Requirement 6.2).
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [test, build-frontend]
+    environment: production
+    env:
+      # Usuario y ruta del proyecto en la EC2.
+      REMOTE_USER: ec2-user
+      REMOTE_HOST: ${{ secrets.EC2_HOST }}
+      REMOTE_DIR: /home/ec2-user/onlyspace
+    steps:
+      - uses: actions/checkout@v4
+
+      # Descarga el dist construido en build-frontend a frontend-web/dist,
+      # para que rsync lo suba junto con el resto del repo.
+      - name: Download frontend dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend-web/dist
+
+      # Configura el agente SSH con la clave privada del secret (no la escribe en logs).
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Add EC2 host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$REMOTE_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Asegura que el directorio del proyecto exista en la EC2.
+      - name: Ensure remote project directory exists
+        run: ssh "$REMOTE_USER@$REMOTE_HOST" "mkdir -p '$REMOTE_DIR'"
+
+      # Sincroniza el repo (incluido el dist ya construido) a la EC2.
+      # Excluye node_modules, .git y artefactos que no se necesitan en el host.
+      # --delete mantiene el destino limpio; se protege el .env y volumenes de datos.
+      - name: Rsync code and frontend dist to EC2
+        run: |
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='backend/dist' \
+            --exclude='backend/node_modules' \
+            --exclude='frontend-web/node_modules' \
+            --exclude='.github' \
+            --exclude='.kiro' \
+            --exclude='.env' \
+            --exclude='**/.env' \
+            ./ "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"
+
+      # Genera el .env de produccion EN la EC2 leyendo los secretos desde AWS SSM
+      # Parameter Store (Requirement 11.3-11.5). NO se pasa ningun secreto de app
+      # desde GitHub: el script usa el IAM instance profile de la EC2 (tarea 7.1)
+      # para ejecutar `aws ssm get-parameters-by-path` sobre /onlyspace/* y escribe
+      # el .env con chmod 600. Ningun valor se imprime en los logs.
+      - name: Render production .env from SSM on EC2
+        run: |
+          ssh "$REMOTE_USER@$REMOTE_HOST" REMOTE_DIR="$REMOTE_DIR" 'bash -s' <<'REMOTE_SCRIPT'
+          set -euo pipefail
+          cd "$REMOTE_DIR"
+          chmod +x scripts/render-env-from-ssm.sh
+          SSM_PREFIX=/onlyspace AWS_REGION=mx-central-1 OUT_FILE="$REMOTE_DIR/.env" \
+            ./scripts/render-env-from-ssm.sh
+          REMOTE_SCRIPT
+
+      # Levanta el stack. docker compose up -d --build es idempotente (Requirement 6.5):
+      # reconstruye el backend, aplica migraciones (comando del servicio) y arranca todo.
+      - name: Deploy with Docker Compose on EC2
+        run: |
+          ssh "$REMOTE_USER@$REMOTE_HOST" REMOTE_DIR="$REMOTE_DIR" 'bash -s' <<'REMOTE_SCRIPT'
+          set -euo pipefail
+          cd "$REMOTE_DIR"
+          docker compose -f docker-compose.prod.yml up -d --build
+          # Limpia imagenes colgadas para no llenar el disco de la EC2.
+          docker image prune -f || true
+          REMOTE_SCRIPT
+
+      # Prueba de humo post-deploy (Requirement 6.3): si /health no responde 200,
+      # el step falla y el job queda en rojo. Se da margen para que el stack arranque
+      # (migraciones + backend + nginx).
+      - name: Health check
         env:
-          CF_DISTRIBUTION_ID: ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }}
-        run: aws cloudfront create-invalidation --distribution-id "$CF_DISTRIBUTION_ID" --paths "/*"
+          PROD_DOMAIN: ${{ secrets.PROD_DOMAIN }}
+        run: |
+          echo "Esperando a que el stack arranque..."
+          sleep 30
+          URL="https://$PROD_DOMAIN/health"
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 10 "$URL" > /dev/null; then
+              echo "Health check OK en el intento $attempt ($URL)"
+              exit 0
+            fi
+            echo "Intento $attempt fallido; reintentando en 15s..."
+            sleep 15
+          done
+          echo "Health check FALLIDO tras varios intentos: $URL"
+          exit 1

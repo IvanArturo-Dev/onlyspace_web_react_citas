@@ -173,7 +173,7 @@ describe('Property 2: public info gates branding/ads by premium', () => {
     expect(adsCall.where).toEqual({ tenant_id: 't1', is_active: true });
     // Existing shape stays intact.
     expect(res.body.data.business).toEqual({ name: 'Barberia Premium' });
-    expect(res.body.data.branch).toEqual({ id: 'b1', name: 'Centro' });
+    expect(res.body.data.branch).toEqual({ id: 'b1', name: 'Centro', maps_url: null });
     expect(res.body.data.services).toHaveLength(1);
   });
 

@@ -175,21 +175,27 @@ function QueueViewer({ services }: { services: Service[] }) {
           <p style={{ color: "var(--text-muted)" }}>No hay clientes en espera para ese servicio y fecha.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
+            <p style={{ ...subtitle, marginBottom: 10 }}>
+              Ordenado por precio del servicio (mayor primero). La columna "#" conserva el orden de
+              llegada (FIFO).
+            </p>
             <table style={table}>
               <thead>
                 <tr>
                   <th style={th}>#</th>
                   <th style={th}>Cliente</th>
+                  <th style={th}>Precio</th>
                   <th style={th}>Hora deseada</th>
                   <th style={th}>Estado</th>
                   <th style={th}>Desde</th>
                 </tr>
               </thead>
               <tbody>
-                {queue.map((e, i) => (
+                {sortByPriceDesc(queue).map((e) => (
                   <tr key={e.id}>
-                    <td style={td}>{i + 1}</td>
+                    <td style={td}>{arrivalOrder(queue, e)}</td>
                     <td style={td}>{e.customer_id}</td>
+                    <td style={td}>{formatPrice(e.service_price)}</td>
                     <td style={td}>{e.desired_start ? formatDateTime(e.desired_start) : "—"}</td>
                     <td style={td}>
                       <span style={badge("info")}>{e.status}</span>
@@ -229,6 +235,36 @@ function formatDateTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// Muestra el precio del servicio (service_price) enriquecido por el backend.
+// Si no esta disponible (null/undefined) degrada con un guion.
+function formatPrice(price?: number | null): string {
+  if (price == null || !Number.isFinite(price)) return "—";
+  return `$${price.toFixed(2)}`;
+}
+
+// Devuelve una copia de la cola ordenada por precio del servicio DESC (mayor
+// ganancia arriba). Las entradas sin precio quedan al final. Estable respecto
+// al orden de llegada (created_at asc) como criterio de desempate.
+function sortByPriceDesc(queue: WaitlistEntry[]): WaitlistEntry[] {
+  return [...queue].sort((a, b) => {
+    const pa = a.service_price ?? -Infinity;
+    const pb = b.service_price ?? -Infinity;
+    if (pb !== pa) return pb - pa;
+    // Desempate: conserva el orden de llegada (FIFO).
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+}
+
+// Numero de orden de llegada (FIFO) de una entrada dentro de la cola original,
+// calculado por created_at ascendente. Preserva el contexto FIFO aunque la
+// tabla se muestre ordenada por precio.
+function arrivalOrder(queue: WaitlistEntry[], entry: WaitlistEntry): number {
+  const fifo = [...queue].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  return fifo.findIndex((e) => e.id === entry.id) + 1;
 }
 
 function readError(err: any, fallback: string): string {

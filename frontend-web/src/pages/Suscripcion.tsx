@@ -5,7 +5,8 @@ import { card, pageTitle, subtitle, btn, badge } from "../ui/ui";
 import Spinner from "../components/Spinner";
 import { mySubscriptionService, type MySubscriptionStatus } from "../services/subscription.service";
 
-const PRICE_LABEL = "$299 MXN/mes";
+// Precio de la suscripcion en MXN cuando el backend no lo expone (fallback).
+const PRICE_FALLBACK_MXN = 99;
 
 // Beneficios del plan premium mostrados al emprendedor.
 const BENEFITS: string[] = [
@@ -95,6 +96,11 @@ export default function Suscripcion() {
   const daysLeft = status?.days_left ?? null;
   const hasActiveSubscription = !!status?.subscription;
 
+  // Precio dinamico: usa el precio del status si el backend lo expone (> 0);
+  // si no, cae al fallback (99). Se usa en el precio mostrado y en los botones.
+  const price = status?.price_mxn && status.price_mxn > 0 ? status.price_mxn : PRICE_FALLBACK_MXN;
+  const priceLabel = `$${price} MXN/mes`;
+
   return (
     <div>
       <h1 style={pageTitle}>Suscripcion premium</h1>
@@ -153,7 +159,7 @@ export default function Suscripcion() {
             <p style={{ ...subtitle, marginTop: 4 }}>Todo lo que necesitas para hacer crecer tu negocio.</p>
           </div>
           <div style={styles.priceBox}>
-            <span style={styles.priceValue}>$299</span>
+            <span style={styles.priceValue}>{`$${price}`}</span>
             <span style={styles.priceUnit}>MXN / mes</span>
           </div>
         </div>
@@ -193,7 +199,7 @@ export default function Suscripcion() {
 
         <div style={styles.actions}>
           <button type="button" style={btn("primary")} onClick={handleSubscribe} disabled={redirecting}>
-            {redirecting ? "Redirigiendo..." : isPremium ? `Renovar (${PRICE_LABEL})` : `Suscribirme (${PRICE_LABEL})`}
+            {redirecting ? "Redirigiendo..." : isPremium ? `Renovar (${priceLabel})` : `Suscribirme (${priceLabel})`}
           </button>
           {hasActiveSubscription && (
             <button type="button" style={btn("danger")} onClick={handleCancel} disabled={cancelling}>

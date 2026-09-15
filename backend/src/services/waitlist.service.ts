@@ -71,7 +71,26 @@ export interface OfferWaitlistInput {
 async function join(input: JoinWaitlistInput) {
   const { tenantId, branchId, serviceId, customerId, desiredDate, desiredStart } = input;
 
-  // 1. Bloqueo por deuda.
+  // 1a. Enforcement de bloqueo (Requirement 4.2): un cliente cuyo status !=
+  // "active" (p. ej. "blocked") tampoco puede encolarse en la lista de espera,
+  // ya que la oferta terminaria creando una cita. Scoped por tenant (404 si el
+  // cliente no pertenece al tenant). Se coloca junto al bloqueo por deuda.
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, tenant_id: tenantId },
+    select: { status: true },
+  });
+  if (!customer) {
+    throw new HttpError('Customer not found', 404, 'CUSTOMER_NOT_FOUND');
+  }
+  if (customer.status !== 'active') {
+    throw new HttpError(
+      'El cliente esta bloqueado por el negocio y no puede reservar',
+      409,
+      'CUSTOMER_BLOCKED'
+    );
+  }
+
+  // 1b. Bloqueo por deuda.
   const hasDebt = await customerCancellationService.hasDebt(tenantId, customerId);
   if (hasDebt) {
     throw new HttpError(

@@ -11,6 +11,8 @@ import CodeEntry from "./pages/public/CodeEntry";
 import BuscarSucursal from "./pages/public/BuscarSucursal";
 import BookingPortal from "./pages/public/BookingPortal";
 import Landing from "./pages/public/Landing";
+import Terminos from "./pages/public/Terminos";
+import Privacidad from "./pages/public/Privacidad";
 import MyAppointments from "./pages/client/MyAppointments";
 import MisCupones from "./pages/client/MisCupones";
 import Dashboard from "./pages/Dashboard";
@@ -26,6 +28,7 @@ import MiCodigo from "./pages/MiCodigo";
 import Marketing from "./pages/Marketing";
 import Promociones from "./pages/Promociones";
 import Profile from "./pages/Profile";
+import GuiaUso from "./pages/GuiaUso";
 import Suscripcion from "./pages/Suscripcion";
 import SuscripcionRetorno from "./pages/SuscripcionRetorno";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -75,6 +78,9 @@ export default function App() {
       {/* /codigo se mantiene por compatibilidad (redirige al panel de busqueda). */}
       <Route path="/codigo" element={<CodeEntry />} />
       <Route path="/reservar/:code" element={<BookingPortal />} />
+      {/* Paginas legales publicas (Terminos y Aviso de Privacidad). */}
+      <Route path="/terminos" element={<Terminos />} />
+      <Route path="/privacidad" element={<Privacidad />} />
       {/* Citas del cliente: requiere sesion (cualquier rol). */}
       <Route
         path="/mis-citas"
@@ -116,6 +122,7 @@ export default function App() {
         <Route path="suscripcion" element={<Suscripcion />} />
         <Route path="suscripcion/retorno" element={<SuscripcionRetorno />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="guia" element={<GuiaUso />} />
       </Route>
       <Route
         path="/admin"

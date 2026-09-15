@@ -26,6 +26,9 @@ const mockPrisma = {
   branch: {
     findUnique: jest.fn(),
   },
+  tenant: {
+    findUnique: jest.fn(),
+  },
   // Runs the transactional reschedule callback against the same mockPrisma so
   // tx.appointment.* resolve through the existing appointment mocks.
   $transaction: jest.fn((cb: any) => cb(mockPrisma)),
@@ -115,6 +118,13 @@ describe('AppointmentService', () => {
     // The hook reloads the appointment via findUnique; default to null so the
     // hook no-ops for legacy tests that don't configure Google.
     mockPrisma.appointment.findUnique.mockResolvedValue(null);
+    // Tenant lookup used by createAppointment (validacion de modalidad,
+    // Requirements 2.2/2.4) and by cancelAppointment (waitlist_auto_assign):
+    // ambas modalidades + auto-asignacion OFF por defecto.
+    mockPrisma.tenant.findUnique.mockResolvedValue({
+      offered_modality: 'both',
+      waitlist_auto_assign: false,
+    });
   });
 
   describe('listAppointments', () => {
@@ -195,7 +205,7 @@ describe('AppointmentService', () => {
 
   describe('createAppointment', () => {
     it('should create appointment with validation', async () => {
-      mockPrisma.customer.findUnique.mockResolvedValue({ id: '1', tenant_id: tenantId });
+      mockPrisma.customer.findUnique.mockResolvedValue({ id: '1', tenant_id: tenantId, status: 'active' });
       mockPrisma.service.findUnique.mockResolvedValue({ id: '1', tenant_id: tenantId, duration_mins: 30 });
       mockPrisma.professional.findUnique.mockResolvedValue(null);
       // No existing same-day duplicate for this customer/service.
@@ -212,6 +222,7 @@ describe('AppointmentService', () => {
           customer_id: '1',
           service_id: '1',
           start_time: '2024-01-01T10:00:00Z',
+          contact_phone: '5551234567',
         })
       );
 
@@ -233,7 +244,7 @@ describe('AppointmentService', () => {
     });
 
     it('should throw error if service not found', async () => {
-      mockPrisma.customer.findUnique.mockResolvedValue({ id: '1', tenant_id: tenantId });
+      mockPrisma.customer.findUnique.mockResolvedValue({ id: '1', tenant_id: tenantId, status: 'active' });
       mockPrisma.service.findUnique.mockResolvedValue(null);
 
       await expect(
@@ -252,7 +263,7 @@ describe('AppointmentService', () => {
     // Arranges the happy-path mocks a createAppointment needs to reach the
     // prisma.appointment.create call, then invokes create with the given data.
     const runCreateWithModality = async (data: Record<string, unknown>) => {
-      mockPrisma.customer.findUnique.mockResolvedValue({ id: '1', tenant_id: tenantId });
+      mockPrisma.customer.findUnique.mockResolvedValue({ id: '1', tenant_id: tenantId, status: 'active' });
       mockPrisma.service.findUnique.mockResolvedValue({
         id: '1',
         tenant_id: tenantId,
@@ -274,6 +285,9 @@ describe('AppointmentService', () => {
           customer_id: '1',
           service_id: '1',
           start_time: '2024-01-01T10:00:00Z',
+          // contact_phone es obligatorio (assertBookingContact). Cada test puede
+          // sobreescribirlo via `data` cuando quiera probar la modalidad.
+          contact_phone: '5551234567',
           ...data,
         })
       );
@@ -320,6 +334,9 @@ describe('AppointmentService', () => {
         service_id: 's1',
         start_time: new Date('2025-01-10T15:00:00Z'),
         modality: 'in_person',
+        // La cita ya tiene telefono; al cambiar la modalidad la validacion de
+        // contacto usa este valor efectivo (assertBookingContact).
+        contact_phone: '5551234567',
       };
       // getAppointment (findUnique) returns the existing appointment.
       mockPrisma.appointment.findUnique.mockResolvedValue(existing);
@@ -350,6 +367,9 @@ describe('AppointmentService', () => {
         service_id: 's1',
         start_time: new Date('2025-01-10T15:00:00Z'),
         modality: 'in_person',
+        // La cita ya tiene telefono; al cambiar modalidad la validacion de
+        // contacto usa este valor efectivo (assertBookingContact).
+        contact_phone: '5551234567',
       };
       // getAppointment (findUnique) -> existing.
       mockPrisma.appointment.findUnique.mockResolvedValue(existing);
@@ -547,6 +567,12 @@ describe('AppointmentService', () => {
         google_email: 'admin@example.com',
       });
       mockPrisma.branch.findUnique.mockResolvedValue(null);
+      // createAppointment/cancelAppointment tenant lookup: ambas modalidades
+      // (Requirements 2.2/2.4) + auto-asignacion OFF por defecto.
+      mockPrisma.tenant.findUnique.mockResolvedValue({
+        offered_modality: 'both',
+        waitlist_auto_assign: false,
+      });
     });
 
     it('created: calls syncAppointmentEvent and persists google_event_id', async () => {
@@ -556,6 +582,7 @@ describe('AppointmentService', () => {
         name: 'Ana',
         phone: '5551234567',
         email: 'ana@example.com',
+        status: 'active',
       });
       mockPrisma.service.findUnique.mockResolvedValue({
         id: 's1',
@@ -595,6 +622,7 @@ describe('AppointmentService', () => {
           customer_id: 'c1',
           service_id: 's1',
           start_time: '2025-01-10T15:00:00Z',
+          contact_phone: '5551234567',
         })
       );
 
@@ -622,6 +650,7 @@ describe('AppointmentService', () => {
         name: 'Ana',
         phone: '5551234567',
         email: 'ana@example.com',
+        status: 'active',
       });
       mockPrisma.service.findUnique.mockResolvedValue({
         id: 's1',
@@ -656,6 +685,7 @@ describe('AppointmentService', () => {
           customer_id: 'c1',
           service_id: 's1',
           start_time: '2025-01-10T15:00:00Z',
+          contact_phone: '5551234567',
         })
       );
 
@@ -674,6 +704,7 @@ describe('AppointmentService', () => {
         name: 'Ana',
         phone: '5551234567',
         email: 'ana@example.com',
+        status: 'active',
       });
       mockPrisma.service.findUnique.mockResolvedValue({
         id: 's1',
@@ -708,6 +739,7 @@ describe('AppointmentService', () => {
           customer_id: 'c1',
           service_id: 's1',
           start_time: '2025-01-10T15:00:00Z',
+          contact_phone: '5551234567',
         })
       );
 
@@ -796,6 +828,7 @@ describe('AppointmentService', () => {
         name: 'Ana',
         phone: '5551234567',
         email: 'ana@example.com',
+        status: 'active',
       });
       mockPrisma.service.findUnique.mockResolvedValue({
         id: 's1',
@@ -833,6 +866,7 @@ describe('AppointmentService', () => {
           customer_id: 'c1',
           service_id: 's1',
           start_time: '2025-01-10T15:00:00Z',
+          contact_phone: '5551234567',
         })
       );
 
@@ -882,7 +916,7 @@ describe('AppointmentService', () => {
 
     // Happy-path mocks so createAppointment reaches prisma.appointment.create.
     const runCreate = async (data: Record<string, unknown>) => {
-      mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', tenant_id: tenantId });
+      mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', tenant_id: tenantId, status: 'active' });
       mockPrisma.service.findUnique.mockResolvedValue({
         id: 's1',
         tenant_id: tenantId,
@@ -904,6 +938,8 @@ describe('AppointmentService', () => {
           customer_id: 'c1',
           service_id: 's1',
           start_time: '2025-01-10T15:00:00Z',
+          // contact_phone es obligatorio (assertBookingContact).
+          contact_phone: '5551234567',
           ...data,
         })
       );
@@ -1034,6 +1070,84 @@ describe('AppointmentService', () => {
       for (const [arg] of updateCalls) {
         expect((arg as any)?.data ?? {}).not.toHaveProperty('video_call_url');
       }
+    });
+  });
+
+  /**
+   * Contacto/domicilio obligatorios en el panel (assertBookingContact).
+   * Validates: Requirements 3.1, 3.2, 3.4
+   */
+  describe('createAppointment — contacto/domicilio obligatorios', () => {
+    const appointmentModule = () => import('../../src/services/appointment.service');
+
+    beforeEach(() => {
+      mockPrisma.customer.findUnique.mockResolvedValue({ id: 'c1', tenant_id: tenantId, status: 'active' });
+      mockPrisma.service.findUnique.mockResolvedValue({ id: 's1', tenant_id: tenantId, duration_mins: 30 });
+      mockPrisma.professional.findUnique.mockResolvedValue(null);
+      mockPrisma.appointment.count.mockResolvedValue(0);
+      mockPrisma.appointment.findFirst.mockResolvedValue(null);
+      mockPrisma.appointment.create.mockResolvedValue({ id: 'a1', tenant_id: tenantId, status: 'PENDING' });
+      mockPrisma.appointment.findUnique.mockResolvedValue(null);
+      // El negocio ofrece home ademas de presencial (Requirements 2.2, 2.4).
+      mockPrisma.tenant.findUnique.mockResolvedValue({
+        offered_modalities: 'in_person,home',
+        waitlist_auto_assign: false,
+      });
+    });
+
+    it('modalidad home valida: persiste contact_phone + home_address + maps_url', async () => {
+      await appointmentModule().then((m) =>
+        m.appointmentService.createAppointment(tenantId, {
+          customer_id: 'c1',
+          service_id: 's1',
+          start_time: '2025-01-10T15:00:00Z',
+          modality: 'home',
+          contact_phone: '5551234567',
+          home_address: 'Calle Falsa 123',
+          maps_url: 'https://maps.google.com/?q=19.4,-99.1',
+        })
+      );
+
+      expect(mockPrisma.appointment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            modality: 'home',
+            contact_phone: '5551234567',
+            home_address: 'Calle Falsa 123',
+            maps_url: 'https://maps.google.com/?q=19.4,-99.1',
+          }),
+        })
+      );
+    });
+
+    it('sin contact_phone -> 400 CONTACT_PHONE_REQUIRED sin crear', async () => {
+      await expect(
+        appointmentModule().then((m) =>
+          m.appointmentService.createAppointment(tenantId, {
+            customer_id: 'c1',
+            service_id: 's1',
+            start_time: '2025-01-10T15:00:00Z',
+          })
+        )
+      ).rejects.toMatchObject({ statusCode: 400, code: 'CONTACT_PHONE_REQUIRED' });
+
+      expect(mockPrisma.appointment.create).not.toHaveBeenCalled();
+    });
+
+    it('modalidad home sin direccion/maps_url -> 400 HOME_DETAILS_REQUIRED sin crear', async () => {
+      await expect(
+        appointmentModule().then((m) =>
+          m.appointmentService.createAppointment(tenantId, {
+            customer_id: 'c1',
+            service_id: 's1',
+            start_time: '2025-01-10T15:00:00Z',
+            modality: 'home',
+            contact_phone: '5551234567',
+          })
+        )
+      ).rejects.toMatchObject({ statusCode: 400, code: 'HOME_DETAILS_REQUIRED' });
+
+      expect(mockPrisma.appointment.create).not.toHaveBeenCalled();
     });
   });
 });

@@ -11,6 +11,9 @@ const mockPrisma = {
     create: jest.fn(),
     update: jest.fn(),
   },
+  customer: {
+    findFirst: jest.fn(),
+  },
   appointment: {
     findMany: jest.fn(),
     create: jest.fn(),
@@ -44,6 +47,14 @@ beforeEach(() => {
   jest.clearAllMocks();
   // Por defecto sin deuda.
   mockHasDebt.mockResolvedValue(false as never);
+  // Por defecto el cliente existe y esta activo (status "active"), de modo que
+  // el enforcement de bloqueo (409 CUSTOMER_BLOCKED) no interfiere salvo cuando
+  // un test lo configure explicitamente.
+  mockPrisma.customer.findFirst.mockResolvedValue({
+    id: 'c1',
+    tenant_id: 't1',
+    status: 'active',
+  } as never);
   // $transaction ejecuta el callback con el mockPrisma como tx.
   mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(mockPrisma));
 });

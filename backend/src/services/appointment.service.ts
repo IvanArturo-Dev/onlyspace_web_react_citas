@@ -7,6 +7,7 @@ import { runGoogleAppointmentHook } from './google-appointment-hook';
 import { customerCancellationService } from './customerCancellation.service';
 import { waitlistService } from './waitlist.service';
 import { notificationService } from './notification.service';
+import { assertBookingContact, assertModalityOffered, normalizeModality } from '../utils/modality';
 
 const logger = pino();
 
@@ -15,15 +16,6 @@ const logger = pino();
  * convenio de dia que booking.service.ts / availability / holiday, usado como
  * inicio del rango de dia para la regla anti-duplicado.
  */
-/**
- * Normalizes the appointment modality. Only the explicit "online" value maps to
- * "online"; any other value (undefined, null, invalid strings) falls back to
- * "in_person", matching the same criterion used by booking.service.
- */
-function normalizeModality(m?: string | null): 'online' | 'in_person' {
-  return m === 'online' ? 'online' : 'in_person';
-}
-
 /**
  * Normalizes a manual video-call URL for persistence. Only called when the
  * `video_call_url` field is present in the payload. Trims the value; an empty
@@ -391,6 +383,19 @@ export const appointmentService = {
       throw new HttpError('Customer not found', 404, 'CUSTOMER_NOT_FOUND');
     }
 
+    // Enforcement de bloqueo (Requirement 4.2): un cliente cuyo status !=
+    // "active" (p. ej. "blocked") no puede recibir una nueva cita desde el panel
+    // (staff). Se coloca junto al bloqueo por deuda (mismo lugar/estilo), DESPUES
+    // de validar que el customer existe y ANTES de crear nada, de modo que
+    // ninguna cita se persista para un cliente bloqueado.
+    if (customer.status !== 'active') {
+      throw new HttpError(
+        'El cliente esta bloqueado por el negocio y no puede reservar',
+        409,
+        'CUSTOMER_BLOCKED'
+      );
+    }
+
     // Bloqueo por deuda (Requirement 3.2, Property 5): un cliente con una
     // penalizacion pendiente de pago no puede agendar una nueva cita. Se coloca
     // DESPUES de validar que el customer existe (para no filtrar la deuda de un
@@ -412,6 +417,31 @@ export const appointmentService = {
     if (!service) {
       throw new HttpError('Service not found', 404, 'SERVICE_NOT_FOUND');
     }
+
+    // Validacion de modalidad (Requirements 2.1, 2.5): la modalidad solicitada
+    // debe estar habilitada por Tenant.offered_modalities (CSV, fuente de verdad
+    // nueva); si no -> 400 MODALITY_NOT_OFFERED. Se cae al legacy
+    // offered_modality solo si offered_modalities no esta presente. Se verifica
+    // ANTES de crear nada (tras las validaciones de cliente/deuda/servicio).
+    const modalityTenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { offered_modalities: true, offered_modality: true },
+    });
+    assertModalityOffered(
+      modalityTenant?.offered_modalities ?? modalityTenant?.offered_modality,
+      data.modality
+    );
+
+    // Validacion de contacto/domicilio (Requirements 3.1, 3.4): telefono
+    // obligatorio siempre; si la modalidad es 'home' tambien direccion + URL de
+    // Google Maps. Se verifica ANTES de crear nada -> 400 CONTACT_PHONE_REQUIRED
+    // o 400 HOME_DETAILS_REQUIRED.
+    assertBookingContact({
+      modality: data.modality,
+      contact_phone: data.contact_phone,
+      home_address: data.home_address,
+      maps_url: data.maps_url,
+    });
 
     // Anti-duplicado (Requirement 1): el mismo cliente no puede tener otra cita
     // ACTIVA (status != CANCELLED) del mismo servicio el mismo dia calendario
@@ -495,6 +525,12 @@ export const appointmentService = {
         status: 'PENDING',
         notes,
         modality: normalizeModality(data.modality),
+        // Datos de contacto/domicilio (Requirements 3.1, 3.2, 3.4). El telefono
+        // es obligatorio (validado arriba); direccion + maps_url solo aplican a
+        // 'home'. Se persisten null cuando no vienen.
+        contact_phone: data.contact_phone ?? null,
+        home_address: data.home_address ?? null,
+        maps_url: data.maps_url ?? null,
         // Persist the manual video-call URL only when the field is present in
         // the payload; when absent, leave the column default untouched
         // (Requirement 2.2). Validation (400) happens inside normalizeVideoUrl.
@@ -559,6 +595,34 @@ export const appointmentService = {
     // Validate the branch belongs to this tenant when it is being changed.
     if (data.branch_id) {
       await branchService.get(tenantId, data.branch_id);
+    }
+
+    // Validacion de contacto/domicilio en actualizacion (Requirements 3.1, 3.4):
+    // solo se aplica cuando el update toca la modalidad o cualquiera de los datos
+    // de contacto/domicilio. Se usa la modalidad efectiva (la entrante si viene,
+    // si no la existente) y los valores efectivos de cada campo, de modo que:
+    //  - cambiar a 'home' exige direccion + maps_url (nuevos o ya guardados).
+    //  - si se limpia el telefono, se rechaza (obligatorio siempre).
+    // Un update que no toca ninguno de estos campos NO revalida (no rompe flujos
+    // que solo cambian notas/estado/pago).
+    const touchesContact =
+      data.modality !== undefined ||
+      data.contact_phone !== undefined ||
+      data.home_address !== undefined ||
+      data.maps_url !== undefined;
+    if (touchesContact) {
+      assertBookingContact({
+        modality: data.modality !== undefined ? data.modality : (existing as any).modality,
+        contact_phone:
+          data.contact_phone !== undefined
+            ? data.contact_phone
+            : (existing as any).contact_phone,
+        home_address:
+          data.home_address !== undefined
+            ? data.home_address
+            : (existing as any).home_address,
+        maps_url: data.maps_url !== undefined ? data.maps_url : (existing as any).maps_url,
+      });
     }
 
     // Only schedule-relevant changes (start_time or service_id) trigger the
@@ -939,29 +1003,91 @@ export const appointmentService = {
       );
     }
 
-    // Sugerencia de reasignacion (Requirement 5.1, Property 7): tras liberar el
-    // espacio, se consulta la primera entrada WAITING (FIFO) compatible con el
-    // servicio/dia de la cita cancelada. Esto SOLO SUGIERE: no ofrece ni
-    // confirma nada automaticamente (la reasignacion nunca es automatica). El
-    // resultado (la entrada o null) se adjunta al retorno como
-    // `waitlist_suggestion` para que el controlador/UI lo muestre. Best-effort:
-    // un fallo aqui no debe romper la cancelacion ya persistida.
+    // Reasignacion de la lista de espera al liberarse el espacio (Requirements
+    // 4.2-4.5). El comportamiento depende de la config del tenant
+    // `waitlist_auto_assign`:
+    //
+    //  - AUTO-ASIGNACION ON: en lugar de solo sugerir, se ASIGNA
+    //    automaticamente el hueco liberado (start_time/end_time de la cita
+    //    cancelada) al primer encolado compatible (FIFO) via
+    //    waitlistService.offer, que re-verifica el solape en la misma
+    //    transaccion para no crear dobles reservas (Requirement 4.4). El
+    //    resultado se adjunta como `waitlist_assigned`. Si no hay encolado
+    //    compatible el espacio queda libre (Requirement 4.5).
+    //
+    //  - AUTO-ASIGNACION OFF: comportamiento actual (Requirement 4.3). Se
+    //    consulta la primera entrada WAITING (FIFO) compatible y se adjunta como
+    //    `waitlist_suggestion`; NO se asigna nada (la reasignacion es manual).
+    //
+    // Todo el bloque es best-effort: un fallo aqui (incluido un SLOT_TAKEN de la
+    // auto-asignacion por una carrera) NO debe romper la cancelacion ya
+    // persistida; en ese caso el hueco simplemente queda libre y, en modo auto,
+    // se cae al comportamiento de sugerencia.
     let waitlistSuggestion: unknown = null;
+    let waitlistAssigned: unknown = null;
+
+    // Config del tenant: si falla la lectura se asume OFF (comportamiento
+    // seguro: solo sugerir). Scoped por tenant.
+    let autoAssign = false;
     try {
-      waitlistSuggestion = await waitlistService.firstWaiting(
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { waitlist_auto_assign: true },
+      });
+      autoAssign = tenant?.waitlist_auto_assign === true;
+    } catch (error) {
+      logger.error(
+        { err: error, appointmentId: updated.id },
+        'waitlist_auto_assign lookup failed (best-effort, defaulting OFF)'
+      );
+      autoAssign = false;
+    }
+
+    try {
+      const first = await waitlistService.firstWaiting(
         tenantId,
         existing.service_id,
         new Date(existing.start_time)
       );
+
+      if (autoAssign && first) {
+        // Auto-asignacion (Requirement 4.2): ofrecer el hueco liberado al
+        // primer encolado. offer re-verifica el solape en transaccion
+        // (Requirement 4.4). Un SLOT_TAKEN (409) u otro fallo cae al modo
+        // sugerencia sin romper la cancelacion.
+        try {
+          waitlistAssigned = await waitlistService.offer(tenantId, first.id, {
+            start: new Date(existing.start_time),
+            end: new Date(existing.end_time),
+            branchId: existing.branch_id ?? null,
+          });
+        } catch (error) {
+          logger.error(
+            { err: error, appointmentId: updated.id, entryId: first.id },
+            'waitlist auto-assign failed (best-effort, falling back to suggestion)'
+          );
+          waitlistAssigned = null;
+          waitlistSuggestion = first;
+        }
+      } else {
+        // Modo manual (Requirement 4.3) o sin encolado compatible (Req 4.5): solo
+        // sugerir (o null cuando la cola esta vacia).
+        waitlistSuggestion = first;
+      }
     } catch (error) {
       logger.error(
         { err: error, appointmentId: updated.id },
-        'waitlist suggestion lookup failed (best-effort)'
+        'waitlist reassignment lookup failed (best-effort)'
       );
       waitlistSuggestion = null;
+      waitlistAssigned = null;
     }
 
-    return { ...updated, waitlist_suggestion: waitlistSuggestion };
+    return {
+      ...updated,
+      waitlist_suggestion: waitlistSuggestion,
+      waitlist_assigned: waitlistAssigned,
+    };
   },
 
   /**

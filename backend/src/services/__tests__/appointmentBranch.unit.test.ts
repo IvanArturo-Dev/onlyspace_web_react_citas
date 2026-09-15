@@ -21,6 +21,7 @@ const mockPrisma = {
   },
   customer: { findUnique: jest.fn() },
   service: { findUnique: jest.fn() },
+  tenant: { findUnique: jest.fn() },
   professional: { findUnique: jest.fn() },
   user: { findUnique: jest.fn() },
   $transaction: jest.fn(async (cb: any) => cb(mockTx)),
@@ -133,8 +134,10 @@ describe('appointmentService.listAppointments — tenant/branch isolation (Prope
 
 describe('appointmentService.createAppointment — branch ownership (Property 5)', () => {
   beforeEach(() => {
-    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT });
+    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT, status: 'active' });
     mockPrisma.service.findUnique.mockResolvedValue({ id: 'svc-1', tenant_id: TENANT, duration_mins: 30 });
+    // El negocio ofrece ambas modalidades por defecto (Requirements 2.2, 2.4).
+    mockPrisma.tenant.findUnique.mockResolvedValue({ offered_modality: 'both' });
     mockPrisma.appointment.findFirst.mockResolvedValue(null);
     mockPrisma.appointment.create.mockImplementation(async (args: any) => ({ id: 'appt-1', ...args.data }));
     // Por defecto: tenant premium (sin restriccion de agendado). Los tests que
@@ -151,6 +154,7 @@ describe('appointmentService.createAppointment — branch ownership (Property 5)
       service_id: 'svc-1',
       start_time: new Date('2030-01-01T10:00:00Z'),
       branch_id: 'branch-1',
+      contact_phone: '5551234567',
     });
 
     expect(mockBranchGet).toHaveBeenCalledWith(TENANT, 'branch-1');
@@ -183,6 +187,7 @@ describe('appointmentService.createAppointment — branch ownership (Property 5)
       customer_id: 'cust-1',
       service_id: 'svc-1',
       start_time: new Date('2030-01-01T10:00:00Z'),
+      contact_phone: '5551234567',
     });
 
     expect(mockBranchGet).not.toHaveBeenCalled();
@@ -194,8 +199,10 @@ describe('appointmentService.createAppointment — branch ownership (Property 5)
 
 describe('appointmentService.createAppointment — gating premium de agendado (Property 5, Req 4.3)', () => {
   beforeEach(() => {
-    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT });
+    mockPrisma.customer.findUnique.mockResolvedValue({ id: 'cust-1', tenant_id: TENANT, status: 'active' });
     mockPrisma.service.findUnique.mockResolvedValue({ id: 'svc-1', tenant_id: TENANT, duration_mins: 30 });
+    // El negocio ofrece ambas modalidades por defecto (Requirements 2.2, 2.4).
+    mockPrisma.tenant.findUnique.mockResolvedValue({ offered_modality: 'both' });
     mockPrisma.appointment.findFirst.mockResolvedValue(null);
     mockPrisma.appointment.create.mockImplementation(async (args: any) => ({ id: 'appt-1', ...args.data }));
     // branchService.get resuelve la pertenencia (rama de aislamiento cubierta
@@ -231,6 +238,7 @@ describe('appointmentService.createAppointment — gating premium de agendado (P
       service_id: 'svc-1',
       start_time: new Date('2030-01-01T10:00:00Z'),
       branch_id: 'branch-primary',
+      contact_phone: '5551234567',
     });
 
     expect(mockPrisma.appointment.create).toHaveBeenCalledTimes(1);
@@ -250,6 +258,7 @@ describe('appointmentService.createAppointment — gating premium de agendado (P
       service_id: 'svc-1',
       start_time: new Date('2030-01-01T10:00:00Z'),
       branch_id: 'branch-extra',
+      contact_phone: '5551234567',
     });
 
     expect(mockPrisma.appointment.create).toHaveBeenCalledTimes(1);

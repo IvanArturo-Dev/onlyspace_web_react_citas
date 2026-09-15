@@ -38,6 +38,7 @@ const mockPrisma = {
   branch: { findUnique: jest.fn() },
   service: { findFirst: jest.fn() },
   holiday: { findFirst: jest.fn() },
+  tenant: { findUnique: jest.fn() },
   appointment: { findUnique: jest.fn() },
   $transaction: jest.fn(async (cb: any) => cb(mockTx)),
 };
@@ -50,6 +51,9 @@ jest.mock('../../database/prisma.service', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 const USER = { id: 'user-1', email: 'cliente@example.com', name: 'Cliente Uno' };
+
+/** Telefono de contacto valido: assertBookingContact lo exige siempre. */
+const PHONE = '5551234567';
 
 const BRANCH = { id: 'branch-1', tenant_id: 'tenant-a', status: 'active' };
 
@@ -71,6 +75,9 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
     jest.clearAllMocks();
     mockPrisma.branch.findUnique.mockResolvedValue(BRANCH as any);
     mockPrisma.service.findFirst.mockResolvedValue(SERVICE as any);
+    // El negocio ofrece ambas modalidades por defecto para no bloquear la
+    // validacion de modalidad (Requirements 2.2, 2.4).
+    mockPrisma.tenant.findUnique.mockResolvedValue({ offered_modality: 'both' } as any);
     // Por defecto la fecha no es asueto.
     mockPrisma.holiday.findFirst.mockResolvedValue(null as any);
     // Por defecto no hay solape y no existe customer previo.
@@ -100,7 +107,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
 
     const result = await bookingService.createBranchBooking(
       BRANCH.id,
-      { service_id: SERVICE.id, start_time: start },
+      { service_id: SERVICE.id, start_time: start, contact_phone: PHONE },
       USER
     );
 
@@ -142,7 +149,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
     await expect(
       bookingService.createBranchBooking(
         BRANCH.id,
-        { service_id: SERVICE.id, start_time: start },
+        { service_id: SERVICE.id, start_time: start, contact_phone: PHONE },
         USER
       )
     ).rejects.toMatchObject({ statusCode: 409, code: 'SLOT_TAKEN' });
@@ -221,7 +228,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
 
     await bookingService.createBranchBooking(
       BRANCH.id,
-      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online' },
+      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online', contact_phone: PHONE },
       USER
     );
 
@@ -234,7 +241,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
 
     await bookingService.createBranchBooking(
       BRANCH.id,
-      { service_id: SERVICE.id, start_time: futureISO() },
+      { service_id: SERVICE.id, start_time: futureISO(), contact_phone: PHONE },
       USER
     );
 
@@ -247,7 +254,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
 
     await bookingService.createBranchBooking(
       BRANCH.id,
-      { service_id: SERVICE.id, start_time: futureISO(), modality: 'telepatia' as any },
+      { service_id: SERVICE.id, start_time: futureISO(), modality: 'telepatia' as any, contact_phone: PHONE },
       USER
     );
 
@@ -260,7 +267,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
 
     await bookingService.createBranchBooking(
       BRANCH.id,
-      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online' },
+      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online', contact_phone: PHONE },
       USER
     );
 
@@ -279,7 +286,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
 
     const result = await bookingService.createBranchBooking(
       BRANCH.id,
-      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online' },
+      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online', contact_phone: PHONE },
       USER
     );
 
@@ -298,7 +305,7 @@ describe('bookingService.createBranchBooking (unit) - Property 4', () => {
 
     const result = await bookingService.createBranchBooking(
       BRANCH.id,
-      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online' },
+      { service_id: SERVICE.id, start_time: futureISO(), modality: 'online', contact_phone: PHONE },
       USER
     );
 

@@ -25,7 +25,8 @@ export interface PublicAd {
 
 export interface PublicInfo {
   business: { name: string };
-  branch?: { id: string; name: string };
+  // maps_url: enlace de Google Maps de la sucursal (Req 7.2); null si no hay.
+  branch?: { id: string; name: string; maps_url?: string | null };
   services: PublicService[];
   /**
    * Indica si el negocio tiene activas las "sesiones en linea" (toggle del
@@ -39,6 +40,26 @@ export interface PublicInfo {
    * incluya `online_sessions_enabled` en la respuesta, el selector aparece solo.
    */
   online_sessions_enabled?: boolean;
+  /**
+   * Modalidad ofrecida por el negocio (Requirements 2.3, 2.4). 'both' habilita
+   * presencial y en linea; una sola limita la reserva a esa modalidad y el
+   * portal oculta el selector. El backend siempre la expone (default
+   * 'in_person' si no hay tenant).
+   */
+  offered_modality?: "in_person" | "online" | "both";
+  /**
+   * Lista de modalidades ofrecidas por el negocio (Requirements 2.3, 3.2). Nuevo
+   * concepto que reemplaza a offered_modality (legacy). 'home' habilita la
+   * modalidad a domicilio. El portal muestra el selector segun esta lista.
+   */
+  offered_modalities?: ("in_person" | "online" | "home")[];
+  // Recargo por servicio a domicilio; 0 = sin costo adicional.
+  home_service_fee?: number;
+  /**
+   * Bandera de visibilidad del contacto (Requirement 6.1-6.3). Cuando es true,
+   * el backend incluye `contact` con los datos disponibles del negocio.
+   */
+  show_contact?: boolean;
   /** Flag de suscripcion premium efectiva. Solo entonces vienen branding/ads. */
   is_premium?: boolean;
   /** Personalizacion del emprendedor. Presente solo si is_premium. */
@@ -151,9 +172,15 @@ export const publicBookingService = {
       service_id: string;
       start_time: string;
       // Modalidad de la cita. El backend detecta "en linea" por modality === 'online'
-      // o location === 'En linea'. Solo se envia cuando el negocio ofrece sesiones
-      // en linea (online_sessions_enabled).
-      modality?: "in_person" | "online";
+      // o location === 'En linea'. 'home' habilita la modalidad a domicilio. Solo se
+      // envia segun las modalidades que ofrece el negocio (offered_modalities).
+      modality?: "in_person" | "online" | "home";
+      // Telefono de contacto del cliente (obligatorio en el backend).
+      contact_phone?: string;
+      // Domicilio del cliente; obligatorio cuando modality === 'home'.
+      home_address?: string;
+      // Enlace de Google Maps del domicilio; obligatorio cuando modality === 'home'.
+      maps_url?: string;
     }
   ): Promise<{ id?: string; video_call_url?: string; [key: string]: unknown }> {
     const res = await api.post(`/public/${encodeURIComponent(code)}/appointments`, payload);

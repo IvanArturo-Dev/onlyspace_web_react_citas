@@ -1,0 +1,27 @@
+# Terraform - archivos que NO deben versionarse
+
+# Directorio de trabajo local de Terraform (plugins, modulos, estado local)
+.terraform/
+
+# Estado de Terraform (puede contener datos sensibles)
+*.tfstate
+*.tfstate.*
+
+# Logs de crash
+crash.log
+crash.*.log
+
+# Archivos de variables que pueden contener secretos.
+# terraform.tfvars (sin secretos) SI se versiona; estos NO:
+*.auto.tfvars
+*.auto.tfvars.json
+terraform.tfvars.local
+
+# NOTA:
+# - Los archivos *.tf SI se versionan (no se ignoran).
+# - terraform.tfvars (sin secretos) SI se versiona.
+# - .terraform.lock.hcl SI se versiona (no se ignora aqui a proposito).
+
+# Claves privadas (key pairs de EC2) y otros secretos locales de infra
+secrets/
+*.pem

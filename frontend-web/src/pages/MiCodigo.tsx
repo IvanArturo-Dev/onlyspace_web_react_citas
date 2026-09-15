@@ -394,27 +394,38 @@ export default function MiCodigo() {
             </button>
           </div>
 
-          <div style={{ ...card, padding: 24, textAlign: "center" }}>
-            <div style={styles.label}>Codigo QR</div>
-            {qrDataUrl && !qrLoading ? (
-              <img
-                src={qrDataUrl}
-                alt={
-                  withLogo
-                    ? "QR del portal de reservas con el logo del negocio"
-                    : "QR del portal de reservas"
-                }
-                style={styles.qr}
-              />
-            ) : (
-              <div style={{ ...styles.qr, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                <Spinner />
-              </div>
-            )}
-            <p style={{ ...subtitle, marginTop: 8 }}>Escanea para abrir el portal</p>
+          <div style={styles.qrCard}>
+            {/* Encabezado del QR: titulo y, si esta disponible, el nombre de la
+                sucursal para dar contexto de que portal se abre al escanear. */}
+            <div style={styles.qrHead}>
+              <div style={styles.label}>Codigo QR</div>
+              {branch.name && <div style={styles.qrBranchName}>{branch.name}</div>}
+            </div>
+
+            {/* Marco del QR: recuadro con fondo de superficie del tema que envuelve
+                un area SIEMPRE blanca donde vive el QR (clave para el escaneo). */}
+            <div style={styles.qrFrame}>
+              {qrDataUrl && !qrLoading ? (
+                <img
+                  src={qrDataUrl}
+                  alt={
+                    withLogo
+                      ? "QR del portal de reservas con el logo del negocio"
+                      : "QR del portal de reservas"
+                  }
+                  style={styles.qr}
+                />
+              ) : (
+                <div style={{ ...styles.qr, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <Spinner />
+                </div>
+              )}
+            </div>
+
+            <p style={styles.qrCaption}>Escanea para abrir el portal</p>
 
             {withLogo ? (
-              <div style={{ ...badge("info"), marginTop: 8 }}>QR personalizado con tu logo</div>
+              <div style={{ ...badge("info"), marginTop: 4 }}>QR personalizado con tu logo</div>
             ) : (
               <div style={styles.premiumHint}>
                 <span style={badge("muted")}>Solo premium</span>
@@ -424,7 +435,7 @@ export default function MiCodigo() {
 
             <div style={styles.qrActions}>
               <button
-                style={btn("secondary")}
+                style={{ ...btn("secondary"), ...styles.qrActionBtn }}
                 onClick={handleDownload}
                 disabled={!qrDataUrl || qrLoading}
                 aria-label="Descargar el codigo QR como imagen PNG"
@@ -432,7 +443,7 @@ export default function MiCodigo() {
                 Descargar QR
               </button>
               <button
-                style={btn("primary")}
+                style={{ ...btn("primary"), ...styles.qrActionBtn }}
                 onClick={handleShare}
                 disabled={!portalUrl}
                 aria-label="Compartir el codigo QR o el enlace del portal"
@@ -476,20 +487,53 @@ const styles: Record<string, CSSProperties> = {
     padding: "10px 12px",
     wordBreak: "break-all",
   },
-  qr: { width: 220, height: 220, maxWidth: "100%", borderRadius: "var(--radius-sm)", background: "#fff", padding: 8 },
+  // Tarjeta del QR: usa la tarjeta base del tema y organiza su contenido en
+  // columna centrada para dar aire y jerarquia (encabezado, marco, acciones).
+  qrCard: {
+    ...card,
+    padding: 24,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    gap: 12,
+  },
+  // Encabezado del QR (titulo + nombre de sucursal), centrado.
+  qrHead: { display: "flex", flexDirection: "column", alignItems: "center", gap: 2 },
+  // Nombre de la sucursal en estilo discreto para dar contexto sin competir con el titulo.
+  qrBranchName: { fontSize: 15, fontWeight: 700, color: "var(--text)" },
+  // Marco del QR: recuadro con borde sutil, radio y sombra suave. El area es
+  // SIEMPRE blanca para garantizar el contraste necesario para el escaneo.
+  qrFrame: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#fff",
+    padding: 18,
+    borderRadius: "var(--radius)",
+    border: "1px solid var(--border)",
+    boxShadow: "var(--shadow-md, var(--shadow-sm))",
+    marginTop: 4,
+  },
+  // El QR siempre sobre blanco; no cambiamos su tamano para no afectar la escaneabilidad.
+  qr: { width: 220, height: 220, maxWidth: "100%", display: "block", background: "#fff" },
+  // Texto guia debajo del QR.
+  qrCaption: { ...subtitle, margin: 0 },
   qrActions: {
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: 10,
-    marginTop: 14,
+    marginTop: 6,
+    width: "100%",
   },
+  // Botones de accion equilibrados: crecen a partes iguales y son ancho completo en movil.
+  qrActionBtn: { flex: "1 1 160px", justifyContent: "center" },
   premiumHint: {
     display: "inline-flex",
     flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    marginTop: 8,
   },
 };

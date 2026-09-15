@@ -24,11 +24,15 @@ export interface BranchView {
   city: string | null;
   latitude: number | null;
   longitude: number | null;
+  // Enlace de Google Maps de la sucursal ("Como llegar"). null cuando no hay
+  // dato (Requirement 7.1-7.4).
+  maps_url: string | null;
 }
 
 export interface CreateBranchInput {
   name: string;
   timezone?: string;
+  maps_url?: string | null;
 }
 
 export interface UpdateBranchInput {
@@ -38,6 +42,23 @@ export interface UpdateBranchInput {
   city?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  maps_url?: string | null;
+}
+
+/**
+ * Normaliza/valida un maps_url para persistencia. Solo se invoca cuando el
+ * campo viene en el payload. Trim: un string vacio limpia el enlace (null). Un
+ * valor no vacio DEBE ser una URL http/https; si no, 400 VALIDATION_ERROR para
+ * que una URL invalida nunca llegue a la BD (Requirement 7.4).
+ */
+function normalizeMapsUrl(u?: string | null): string | null {
+  if (u === null) return null;
+  const s = typeof u === 'string' ? u.trim() : '';
+  if (s === '') return null;
+  if (!/^https?:\/\//i.test(s)) {
+    throw new HttpError('maps_url no es una URL valida', 400, 'VALIDATION_ERROR');
+  }
+  return s;
 }
 
 const VALID_STATUSES = ['active', 'inactive'] as const;
@@ -56,6 +77,7 @@ function toBranchView(branch: {
   city?: string | null;
   latitude?: Prisma.Decimal | number | null;
   longitude?: Prisma.Decimal | number | null;
+  maps_url?: string | null;
 }): BranchView {
   return {
     id: branch.id,
@@ -70,6 +92,7 @@ function toBranchView(branch: {
     // serializa de forma inesperada). null se conserva como null.
     latitude: branch.latitude != null ? Number(branch.latitude) : null,
     longitude: branch.longitude != null ? Number(branch.longitude) : null,
+    maps_url: branch.maps_url ?? null,
   };
 }
 
@@ -216,6 +239,12 @@ export const branchService = {
 
     const bookingCode = await assignUniqueBranchCode();
 
+    // maps_url opcional (Requirement 7.1/7.4): se valida solo cuando viene en el
+    // payload; una URL invalida lanza 400 antes de crear nada. Las coordenadas
+    // NO son obligatorias.
+    const mapsUrlProvided = input.maps_url !== undefined;
+    const mapsUrl = mapsUrlProvided ? normalizeMapsUrl(input.maps_url) : undefined;
+
     const branch = await prisma.branch.create({
       data: {
         tenant_id: tenantId,
@@ -223,6 +252,7 @@ export const branchService = {
         status: 'active',
         booking_code: bookingCode,
         ...(input.timezone ? { timezone: input.timezone } : {}),
+        ...(mapsUrlProvided ? { maps_url: mapsUrl } : {}),
       },
     });
 
@@ -283,6 +313,12 @@ export const branchService = {
       }
     }
 
+    // Validacion de maps_url (Requirement 7.4): solo cuando viene en el input.
+    // Un valor no vacio debe ser URL http/https; string vacio o null limpian el
+    // valor. Se valida ANTES de escribir para que una URL invalida no mute nada.
+    const mapsUrlProvided = input.maps_url !== undefined;
+    const mapsUrl = mapsUrlProvided ? normalizeMapsUrl(input.maps_url) : undefined;
+
     const data: Prisma.BranchUpdateInput = {};
     if (input.name !== undefined) {
       const name = input.name.trim();
@@ -307,6 +343,11 @@ export const branchService = {
     }
     if (input.longitude !== undefined) {
       data.longitude = input.longitude;
+    }
+    // maps_url se incluye SOLO cuando viene en el input (undefined => no se
+    // toca). null/'' se persisten como null (limpiar el enlace).
+    if (mapsUrlProvided) {
+      data.maps_url = mapsUrl;
     }
 
     const branch = await prisma.branch.update({

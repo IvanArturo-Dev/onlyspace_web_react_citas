@@ -20,6 +20,8 @@ export interface Customer {
   notes?: string;
   tags: string[];
   status: string;
+  // Tendencia a no asistir (el backend lo envia en el listado, resuelto en lote).
+  at_risk?: boolean;
   created_at: string;
   updated_at: string;
 }

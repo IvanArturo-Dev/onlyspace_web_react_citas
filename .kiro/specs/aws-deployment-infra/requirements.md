@@ -125,3 +125,16 @@ El sistema en local ya esta completo y probado. Esta spec cubre exclusivamente l
 1. THE grupo de seguridad de la instancia SHALL permitir trafico entrante solo en los puertos 80, 443 y el puerto de administracion (SSH) restringido.
 2. THE MySQL y Redis NO SHALL exponerse a Internet; solo seran accesibles dentro de la red de contenedores del host.
 3. WHERE sea posible THE acceso administrativo (SSH) SHALL restringirse por IP o gestionarse por un mecanismo seguro.
+
+
+### Requirement 11: Gestion de secretos en AWS (SSM Parameter Store)
+
+**User Story:** Como duenno del sistema, quiero que los secretos de la aplicacion vivan en AWS y no en GitHub, para reducir la superficie de exposicion y no depender del repositorio para las credenciales de produccion.
+
+#### Acceptance Criteria
+
+1. THE secretos de la aplicacion (credenciales de base de datos, JWT, Mercado Pago, Google, superadmin, etc.) SHALL almacenarse en AWS SSM Parameter Store como parametros cifrados (SecureString) bajo un prefijo del proyecto (ej. /onlyspace/).
+2. THE instancia EC2 SHALL tener un IAM role (instance profile) con permiso de solo lectura sobre los parametros SSM del proyecto, sin claves de acceso estaticas.
+3. WHEN se despliega o arranca el stack THEN el servidor SHALL leer los parametros desde SSM y generar el archivo .env de produccion localmente.
+4. THE GitHub Secrets SHALL contener unicamente lo necesario para la conexion y el build: la clave SSH (EC2_SSH_KEY), el host (EC2_HOST), el dominio (PROD_DOMAIN) y las variables VITE_ del frontend (que no son secretas: se incrustan en el bundle publico).
+5. THE secretos de la aplicacion NO SHALL transitar por GitHub Actions ni quedar en logs.
